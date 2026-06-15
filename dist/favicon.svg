@@ -1,0 +1,6 @@
+<svg width="120" height="120" viewBox="0 0 120 120" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>Junie</title>
+  <rect width="120" height="120" rx="28" fill="#1A1510"/>
+  <text x="60" y="85" text-anchor="middle" font-family="'Syne', Georgia, serif" font-weight="800" font-size="68" letter-spacing="-0.03em" fill="#F3ECDD">J</text>
+  <circle cx="83" cy="22" r="10" fill="#CB9A2E"/>
+</svg>
