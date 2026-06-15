@@ -63,6 +63,27 @@ export default async (request, context) => {
       };
       await blobPut(siteId, token, blobKey, JSON.stringify(merged));
 
+      // Always write meta if we have enough info (name may come from brief)
+      const eventName = incoming.name ||
+        (incoming.brief?.find(r => /name|event|title/i.test(r?.key || ""))?.value) || "";
+      const eventVenue = incoming.venue ||
+        (incoming.brief?.find(r => /venue|destination/i.test(r?.key || ""))?.value) || "";
+      if (incoming.inviteCode || eventName) {
+        try {
+          const meta = {
+            id: eventId,
+            name: eventName,
+            hostName: incoming.hostName || "",
+            mainDate: incoming.mainDate || "",
+            endDate: incoming.endDate || "",
+            venue: eventVenue,
+            occasionType: incoming.occasionType || "event",
+            inviteCode: incoming.inviteCode || "",
+          };
+          await blobPut(siteId, token, `meta-${eventId}`, JSON.stringify(meta));
+        } catch {}
+      }
+
       if (incoming.inviteCode) {
         try {
           let index = {};
@@ -70,19 +91,6 @@ export default async (request, context) => {
           if (idxRaw) index = JSON.parse(idxRaw);
           index[incoming.inviteCode] = eventId;
           await blobPut(siteId, token, "invite-index", JSON.stringify(index));
-        } catch {}
-        try {
-          const meta = {
-            id: eventId,
-            name: incoming.name || existing.name || "",
-            hostName: incoming.hostName || existing.hostName || "",
-            mainDate: incoming.mainDate || existing.mainDate || "",
-            endDate: incoming.endDate || existing.endDate || "",
-            venue: incoming.venue || existing.venue || "",
-            occasionType: incoming.occasionType || existing.occasionType || "event",
-            inviteCode: incoming.inviteCode,
-          };
-          await blobPut(siteId, token, `meta-${eventId}`, JSON.stringify(meta));
         } catch {}
       }
 

@@ -1,5 +1,3 @@
-// Scan blob store for event matching invite code
-// Events store their inviteCode in metadata indexed separately
 const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" };
 
 function getEnv(context) {
@@ -18,9 +16,9 @@ export default async (request, context) => {
   const { siteId, token } = getEnv(context);
   if (!siteId || !token) return new Response(JSON.stringify({ error: "Missing env vars" }), { status: 500, headers });
 
-  // Look up invite code index blob
-  const idxUrl = `https://api.netlify.com/api/v1/blobs/${siteId}/junie/invite-index`;
   try {
+    // Look up invite index
+    const idxUrl = `https://api.netlify.com/api/v1/blobs/${siteId}/junie/invite-index`;
     const idxRes = await fetch(idxUrl, { headers: { Authorization: `Bearer ${token}` } });
     if (!idxRes.ok) return new Response("null", { status: 200, headers });
 
@@ -28,13 +26,44 @@ export default async (request, context) => {
     const eventId = idx[code];
     if (!eventId) return new Response("null", { status: 200, headers });
 
-    // Fetch that event's data
-    const evtUrl = `https://api.netlify.com/api/v1/blobs/${siteId}/junie/junie-event-${eventId}`;
-    const evtRes = await fetch(evtUrl, { headers: { Authorization: `Bearer ${token}` } });
-    if (!evtRes.ok) return new Response("null", { status: 200, headers });
+    // Try meta blob first
+    try {
+      const metaUrl = `https://api.netlify.com/api/v1/blobs/${siteId}/junie/meta-${eventId}`;
+      const metaRes = await fetch(metaUrl, { headers: { Authorization: `Bearer ${token}` } });
+      if (metaRes.ok) {
+        const meta = await metaRes.json();
+        // Also get full state to merge
+        const stateUrl = `https://api.netlify.com/api/v1/blobs/${siteId}/junie/junie-event-${eventId}`;
+        const stateRes = await fetch(stateUrl, { headers: { Authorization: `Bearer ${token}` } });
+        if (stateRes.ok) {
+          const state = await stateRes.json();
+          return new Response(JSON.stringify({ ...state, ...meta, id: eventId }), { status: 200, headers });
+        }
+        return new Response(JSON.stringify({ ...meta, id: eventId }), { status: 200, headers });
+      }
+    } catch {}
 
-    const evtData = await evtRes.json();
-    return new Response(JSON.stringify({ id: eventId, ...evtData }), { status: 200, headers });
+    // Fallback: get state blob and extract what we can
+    const stateUrl = `https://api.netlify.com/api/v1/blobs/${siteId}/junie/junie-event-${eventId}`;
+    const stateRes = await fetch(stateUrl, { headers: { Authorization: `Bearer ${token}` } });
+    if (!stateRes.ok) return new Response("null", { status: 200, headers });
+
+    const state = await stateRes.json();
+
+    // Try to extract name from brief if not stored at root
+    const nameBrief = state.brief?.find(r => /name|event|title/i.test(r.key))?.value || "";
+    const venueBrief = state.brief?.find(r => /venue|destination|location/i.test(r.key))?.value || "";
+
+    return new Response(JSON.stringify({
+      ...state,
+      id: eventId,
+      name: state.name || nameBrief || eventId,
+      venue: state.venue || venueBrief || "",
+      mainDate: state.mainDate || "",
+      endDate: state.endDate || "",
+      occasionType: state.occasionType || "event",
+    }), { status: 200, headers });
+
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), { status: 500, headers });
   }
