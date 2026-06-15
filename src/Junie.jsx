@@ -408,8 +408,8 @@ function Onboarding({ onComplete, onCancel }) {
     } else {
       // Build event object
       const brief = [
-        { id: genId(), key: "Venue", value: data.venue || "" },
-        { id: genId(), key: "Dress", value: data.dressCode || "" },
+        { id: genId(), key: data.occasionType === "trip" ? "Destination" : "Venue", value: data.venue || "" },
+        { id: genId(), key: data.occasionType === "trip" ? "Style" : "Dress", value: data.dressCode || "" },
         { id: genId(), key: "Guests", value: data.guestCount || "" },
         { id: genId(), key: "Vibe", value: data.vibe || "" },
       ].filter(r => r.value);
@@ -1291,7 +1291,16 @@ export default function Junie() {
       if (!remote) return;
       const existing = events.find(e => e.id === remote.id);
       if (existing) { setActiveId(remote.id); setView("event"); return; }
-      const newEvent = { ...remote, role: "collaborator", messages: [] };
+      const newEvent = {
+        ...remote,
+        role: "collaborator",
+        messages: [],
+        name: remote.name || remote.id,
+        venue: remote.venue || "",
+        mainDate: remote.mainDate || "",
+        endDate: remote.endDate || "",
+        occasionType: remote.occasionType || "event",
+      };
       setEvents(ev => [...ev, newEvent]);
       setActiveId(newEvent.id);
       setView("event");
