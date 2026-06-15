@@ -1172,7 +1172,16 @@ function EventShell({ event, onUpdate, onBack }) {
   useEffect(() => {
     if (!loaded) return;
     if (isFirstRender.current) { isFirstRender.current = false; return; }
-    remoteSave(event.id, { brief, todos, checks, savedList, pins, chips, dayPlans });
+    remoteSave(event.id, {
+      brief, todos, checks, savedList, pins, chips, dayPlans,
+      inviteCode: event.inviteCode,
+      name: event.name,
+      hostName: event.hostName,
+      mainDate: event.mainDate,
+      endDate: event.endDate,
+      venue: event.venue,
+      occasionType: event.occasionType,
+    });
   }, [brief, todos, checks, savedList, pins, chips, dayPlans]);
 
   const onSave = useCallback((card) => onUpdate({ savedList: savedList.some(x => x.id === card.id) ? savedList : [{ ...card, ts: Date.now() }, ...savedList] }), [savedList, onUpdate]);

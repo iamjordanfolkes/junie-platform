@@ -62,6 +62,30 @@ export default async (request, context) => {
         updatedAt: Date.now(),
       };
       await blobPut(siteId, token, blobKey, JSON.stringify(merged));
+
+      if (incoming.inviteCode) {
+        try {
+          let index = {};
+          const idxRaw = await blobGet(siteId, token, "invite-index");
+          if (idxRaw) index = JSON.parse(idxRaw);
+          index[incoming.inviteCode] = eventId;
+          await blobPut(siteId, token, "invite-index", JSON.stringify(index));
+        } catch {}
+        try {
+          const meta = {
+            id: eventId,
+            name: incoming.name || existing.name || "",
+            hostName: incoming.hostName || existing.hostName || "",
+            mainDate: incoming.mainDate || existing.mainDate || "",
+            endDate: incoming.endDate || existing.endDate || "",
+            venue: incoming.venue || existing.venue || "",
+            occasionType: incoming.occasionType || existing.occasionType || "event",
+            inviteCode: incoming.inviteCode,
+          };
+          await blobPut(siteId, token, `meta-${eventId}`, JSON.stringify(meta));
+        } catch {}
+      }
+
       return new Response(JSON.stringify(merged), { status: 200, headers });
     } catch (err) {
       return new Response(JSON.stringify({ error: err.message }), { status: 500, headers });
