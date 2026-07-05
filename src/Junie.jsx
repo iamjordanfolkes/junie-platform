@@ -245,8 +245,12 @@ function EventCard({ event, onSelect, onDelete }) {
         )}
       </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14 }}>
-        <div style={{ fontSize: 12, color: C.accent, fontWeight: 600 }}>
-          {event.role === "creator" ? "✦ Creator" : "✦ Collaborator"}
+        <div style={{ fontSize: 12, color: C.accent, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+          {event.isExample ? (
+            <span style={{ background: C.accentSoft, color: C.accent, borderRadius: 999, padding: "3px 9px", fontSize: 10.5, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}>Example</span>
+          ) : (
+            <span>{event.role === "creator" ? "✦ Creator" : "✦ Collaborator"}</span>
+          )}
         </div>
         <button onClick={e => { e.stopPropagation(); onDelete(event.id); }} style={{ border: "none", background: "transparent", color: C.faint, cursor: "pointer", fontSize: 12, fontFamily: T.font }}>Remove</button>
       </div>
@@ -1255,57 +1259,63 @@ function EventShell({ event, onUpdate, onBack }) {
 }
 
 // ─── ROOT ─────────────────────────────────────────────────────────────────────
-// ─── JORDANTEENTH SEED EVENT ─────────────────────────────────────────────────
-const JORDANTEENTH_SEED = {
-  id: "jordanteenth-2026",
-  name: "Jordanteenth: An Ode to 30 Years",
-  hostName: "Jordan Folkes",
-  mainDate: "2026-06-18",
-  venue: "Love's Club",
+// ─── EXAMPLE SEED EVENT (demo only, safe to remove) ────────────────────────────────────────────
+const EXAMPLE_SEED = {
+  id: "example-getaway",
+  name: "✨ Example: Miami Weekend Getaway",
+  hostName: "",
+  mainDate: "2026-08-14",
+  endDate: "2026-08-16",
+  venue: "South Beach, Miami",
+  occasionType: "getaway",
   role: "creator",
-  occasionType: "event",
-  endDate: "",
-  inviteCode: "jordanteenth2026",
+  isExample: true,
+  inviteCode: "",
   messages: [],
   brief: [
-    {"id":"venue","key":"Venue","value":"Love's Club · 106 Melrose St, Brooklyn, NY"},
-    {"id":"dress","key":"Dress","value":"Monochrome summer. Dress like Jordy. Dress like you have aux privileges."},
-    {"id":"guests","key":"Guests","value":"~50 confirmed"},
-    {"id":"vibe","key":"Vibe","value":"Love's Club in Bushwick, Brooklyn brings a \"dive bar meets concert venue\" vibe—a blend of 1970s aesthetics, premium sound, and cozy socializing."}
+    { id: "venue", key: "Destination", value: "South Beach, Miami" },
+    { id: "guests", key: "Who's coming", value: "Me and a couple friends" },
+    { id: "pack", key: "Packing notes", value: "Swimsuits, sundresses, something for a nice dinner" },
+    { id: "vibe", key: "Vibe / description", value: "Beach days, good food, a little nightlife — nothing overplanned" },
   ],
   todos: [
-    {"id":"eats","label":"Confirm the late-night plan"},
-    {"id":"invite","label":"Send Partiful followups"},
-    {"id":"playlist","label":"Build the 4-hour playlist"},
-    {"id":"t1780423463289","label":"Share Monochrome outfit Pinterest board"}
+    { id: "t1", label: "Book the stay" },
+    { id: "t2", label: "Book flights" },
+    { id: "t3", label: "Build the itinerary" },
+    { id: "t4", label: "Dinner reservations" },
   ],
-  checks: {"t1780423463289":true,"playlist":true},
-  chips: ["Cocktails recs","Late-night eats near Love's Club","Set the playlist vibe","Gift ideas"],
+  checks: { t1: true },
+  chips: [
+    "Best beach clubs in South Beach for a Saturday",
+    "Where should we get dinner Friday night?",
+    "What's the move for getting around Miami as a group?",
+    "Any rooftop bars worth checking out?",
+  ],
   dayPlans: {
-    "2026-06-13": {"notes":"","activities":[{"id":"a1780616292799","text":"Run","done":false},{"id":"a1781044117174","text":"Brunch","done":false},{"id":"a1781209923156","text":"KNICKS!","done":false}]},
-    "2026-06-14": {"notes":"Sunday I","activities":[{"id":"a1780530605049","text":"Liberty Game","done":false},{"id":"a1780539031640","text":"Bathhouse","done":false}]},
-    "2026-06-16": {"notes":"","activities":[{"id":"a1780788160930","text":"Record Room","done":false}]},
-    "2026-06-17": {"notes":"","activities":[{"id":"a1","text":"Date night","done":false}]},
-    "2026-06-18": {"notes":"- For Party: Everyone send Jordan favorite picture together\n- For Party: Ask Zoda to bring her camera","activities":[{"id":"a1780420767703","text":"Haircut","done":false},{"id":"a1780446546905","text":"Bodega Nights","done":false},{"id":"a1780420763376","text":"Love's Club - Party!","done":false}]},
-    "2026-06-20": {"notes":"","activities":[]}
+    "2026-08-14": { notes: "Land midday, check in, beach before dinner", activities: [
+      { id: "a1", text: "Flight lands ~1pm", done: false },
+      { id: "a2", text: "Check in, hit the beach", done: false },
+      { id: "a3", text: "Dinner reservation", done: false },
+    ]},
+    "2026-08-15": { notes: "The full beach day", activities: [
+      { id: "a4", text: "Beach club, morning to afternoon", done: false },
+      { id: "a5", text: "Nap / pool time", done: false },
+      { id: "a6", text: "Dinner + out", done: false },
+    ]},
+    "2026-08-16": { notes: "Slow morning, flight out in the afternoon", activities: [
+      { id: "a7", text: "Brunch", done: false },
+      { id: "a8", text: "Pack up, head to airport", done: false },
+    ]},
   },
   savedList: [
-    {"id":"arc1780458004671","type":"arc","kicker":"Playlist Flow","title":"Night Music Timeline","items":[{"time":"Golden Hour","name":"Deep House Opening","sub":"Set sophisticated warehouse energy"},{"time":"Dinner Party","name":"Melodic Techno","sub":"Peggy Gou, Four Tet, Bonobo vibes"},{"time":"Mid Evening","name":"Classic Disco Edits","sub":"Brooklyn electronic scene feels"},{"time":"Peak Hours","name":"Afrobeats Bangers","sub":"Kaytranada energy for the crowd"},{"time":"Dance Floor","name":"Takeover Mode","sub":"FKA twigs for the monochrome crowd"}],"ts":1780458017940},
-    {"id":"list1780427256886","type":"list","kicker":"SIGNATURE COCKTAIL","title":"Mezcal Spritz Recipe","items":[{"name":"Individual Serve","sub":"Fill wine glass with ice, add mezcal, fresh orange juice, and Campari/Aperol. Top with sparkling water, orange slice, fresh herbs","tag":"Per Glass"},{"name":"Batch Version","sub":"2 bottles mezcal, 1 bottle Aperol, fresh orange juice. Let guests top with sparkling water","tag":"For Crowd"},{"name":"Glass Style","sub":"Large wine glass filled with ice","tag":"Presentation"},{"name":"Garnish","sub":"Orange slice and fresh herbs","tag":"Finishing Touch"}],"note":"Smoky but summery, sophisticated but not fussy","ts":1780427272356},
-    {"id":"arc1780375508184","type":"arc","kicker":"Photography Setup Timeline","title":"Capturing Your Event at Love's Club","items":[{"time":"Setup","name":"Equipment Positioning","sub":"Place LED panels with diffusers in main room"},{"time":"Early Event","name":"Natural Light Phase","sub":"Utilize billiards room daylight for group shots"},{"time":"Peak Hours","name":"Roaming Documentation","sub":"Candid photography throughout"},{"time":"Golden Moments","name":"Gallery Portraits","sub":"Posed shots against white walls for monochrome aesthetic"},{"time":"Late Night","name":"Warehouse Atmosphere","sub":"Leverage dim lighting for intimate after-hours mood"}],"ts":1780375939431}
+    { id: "s1", type: "text", kicker: "Junie said", title: "For a Miami weekend, don't overbook the nightlife", body: "For a Miami weekend, don't overbook the nightlife — one real night out is plenty when the days are already full of sun. Save your energy for the beach club and a great dinner, and let the rest be spontaneous.", ts: 1 },
   ],
-  pins: [
-    {"id":"lnk1780446662449","kind":"link","ts":1780446662449,"url":"https://www.tiktok.com/t/ZTBSsws7d/","note":"Casa Piada - Spritz Happy Hour"},
-    {"id":"lnk1780422861313","kind":"link","ts":1780422861313,"url":"https://www.tiktok.com/t/ZTBSkSq7j/","note":"Bodega Nights"},
-    {"id":"lnk1780375250035","kind":"link","ts":1780375250035,"url":"https://www.pinterest.com/pin/931541504177352311/","note":"Brown Suit"},
-    {"id":"lnk1780375236535","kind":"link","ts":1780375236535,"url":"https://www.asos.com/us/asos-design/asos-design-oversized-tapered-suit-pants-in-mid-blue/prd/209573030","note":"Blue Suit"},
-    {"id":"lnk1780375214919","kind":"link","ts":1780375214919,"url":"https://jaxxon.com/products/studded-inset-hoop-earrings-gold?Finish=14k+Gold","note":"Hoop Earrings - 1"}
-  ]
+  pins: [],
 };
 
 export default function Junie() {
   const init = lsLoad();
-  const [events, setEvents] = useState(init.events?.length ? init.events : [JORDANTEENTH_SEED]);
+  const [events, setEvents] = useState(init.events?.length ? init.events : [EXAMPLE_SEED]);
   const [activeId, setActiveId] = useState(null);
   const [view, setView] = useState("dashboard"); // dashboard | onboarding | event
 
