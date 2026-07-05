@@ -361,15 +361,50 @@ function OnboardingStep({ step, data, onChange }) {
     );
   }
 
-  if (step === "details") return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div style={{ fontSize: 22, fontWeight: 700, fontFamily: T.wm, color: C.ink }}>Set the vibe.</div>
-      <div style={{ fontSize: 13.5, color: C.muted }}>Junie uses this to tailor every suggestion to your event.</div>
-      {[
+  if (step === "details") {
+    const fieldsByType = {
+      event: [
         { key: "dressCode", label: "Dress code", placeholder: "Monochrome summer, black tie, come as you are…" },
         { key: "guestCount", label: "Guest count", placeholder: "~50" },
         { key: "vibe", label: "Vibe / description", placeholder: "The feeling you want people to have…", multiline: true },
-      ].map(f => (
+      ],
+      trip: [
+        { key: "guestCount", label: "Who's coming", placeholder: "e.g. 4 of us, just me and my partner…" },
+        { key: "dressCode", label: "Packing notes", placeholder: "Climate, dress norms, anything to pack around…" },
+        { key: "vibe", label: "Vibe / description", placeholder: "What kind of trip is this…", multiline: true },
+      ],
+      getaway: [
+        { key: "guestCount", label: "Who's coming", placeholder: "e.g. just me, me + partner, the family…" },
+        { key: "dressCode", label: "Packing notes", placeholder: "Weather, activities, anything to bring…" },
+        { key: "vibe", label: "Vibe / description", placeholder: "What you want this getaway to feel like…", multiline: true },
+      ],
+      date: [
+        { key: "dressCode", label: "Outfit notes", placeholder: "Dressy, casual, a specific look you're going for…" },
+        { key: "guestCount", label: "Budget (optional)", placeholder: "e.g. keep it under $150" },
+        { key: "vibe", label: "Vibe / description", placeholder: "Romantic, playful, low-key… what's the mood?", multiline: true },
+      ],
+      selfcare: [
+        { key: "vibe", label: "What you need", placeholder: "Rest, reset, pampering, quiet… what's the goal?", multiline: true },
+        { key: "dressCode", label: "Any bookings or must-haves", placeholder: "Massage, favorite skincare, a specific playlist…" },
+        { key: "guestCount", label: "Solo or with someone", placeholder: "Just me, with a friend…" },
+      ],
+      other: [
+        { key: "dressCode", label: "Details worth noting", placeholder: "Anything logistical…" },
+        { key: "guestCount", label: "Who's involved", placeholder: "Just me, a small group…" },
+        { key: "vibe", label: "Vibe / description", placeholder: "The feeling you're going for…", multiline: true },
+      ],
+    };
+    const fields = fieldsByType[data.occasionType] || fieldsByType.event;
+    const heading = data.occasionType === "selfcare" ? "Set the intention."
+      : data.occasionType === "date" ? "Set the mood."
+      : ["trip","getaway"].includes(data.occasionType) ? "Set the details."
+      : "Set the vibe.";
+
+    return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ fontSize: 22, fontWeight: 700, fontFamily: T.wm, color: C.ink }}>{heading}</div>
+      <div style={{ fontSize: 13.5, color: C.muted }}>Junie uses this to tailor every suggestion to your plans.</div>
+      {fields.map(f => (
         <div key={f.key}>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: C.muted, marginBottom: 6 }}>{f.label}</div>
           {f.multiline
@@ -379,7 +414,8 @@ function OnboardingStep({ step, data, onChange }) {
         </div>
       ))}
     </div>
-  );
+    );
+  }
 
   if (step === "prompts") return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
