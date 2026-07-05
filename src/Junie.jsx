@@ -1262,7 +1262,7 @@ function EventShell({ event, onUpdate, onBack }) {
 // ─── EXAMPLE SEED EVENT (demo only, safe to remove) ────────────────────────────────────────────
 const EXAMPLE_SEED = {
   id: "example-getaway",
-  name: "✨ Example: Miami Weekend Getaway",
+  name: "Miami Weekend Getaway",
   hostName: "",
   mainDate: "2026-08-14",
   endDate: "2026-08-16",
