@@ -139,7 +139,7 @@ async function callAPI(body) {
 function buildPersona(event) {
   const briefLines = (event.brief || []).map(r => `• ${r.key}: ${r.value}`).join("\n");
   return [
-    `You are Junie — a warm, witty, sharp personal party-planning assistant for ONE event. You talk like a stylish well-traveled friend texting back — never corporate, never a help-desk.`,
+    `You are Junie — a warm, witty, sharp personal planning assistant for ONE occasion: ${({event:"a party or event",trip:"a group trip",getaway:"a getaway",date:"a date night",selfcare:"a self-care day"})[event.occasionType] || "a special occasion"}. You talk like a stylish well-traveled friend texting back — never corporate, never a help-desk. Tailor everything to the occasion type: itineraries and logistics for trips, romance and pacing for date nights, restoration and treats for self-care days, hosting and vibe for parties.`,
     "",
     "THE EVENT:",
     `• Name: ${event.name || "Untitled event"}`,
@@ -271,7 +271,7 @@ function Dashboard({ events, onCreate, onSelect, onDelete, onJoin }) {
     <div className="j-scroll" style={{ height: "100%", overflowY: "auto", background: C.bg }}>
       <div style={{ padding: "52px 20px 32px" }}>
         <div style={{ fontFamily: T.wm, fontWeight: 800, fontSize: 34, letterSpacing: "-0.02em", color: C.ink, lineHeight: 1 }}>Junie</div>
-        <div style={{ fontSize: 13, color: C.muted, marginTop: 6, marginBottom: 28 }}>Your party planner.</div>
+        <div style={{ fontSize: 13, color: C.muted, marginTop: 6, marginBottom: 28 }}>Plan anything worth looking forward to.</div>
 
         {events.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 28 }}>
@@ -282,12 +282,12 @@ function Dashboard({ events, onCreate, onSelect, onDelete, onJoin }) {
         {events.length === 0 && (
           <div style={{ background: C.surface, border: `1px dashed ${C.pillLine}`, borderRadius: T.r.card, padding: "32px 20px", textAlign: "center", marginBottom: 28 }}>
             <div style={{ fontSize: 28, marginBottom: 10 }}>🎉</div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: C.ink }}>No events yet</div>
-            <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Create your first or join one with an invite code.</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: C.ink }}>Nothing planned yet</div>
+            <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>A trip, a party, a date night, a self-care day — start one or join with an invite code.</div>
           </div>
         )}
 
-        <Btn primary onClick={onCreate} style={{ width: "100%", marginBottom: 12 }}>+ Create new event</Btn>
+        <Btn primary onClick={onCreate} style={{ width: "100%", marginBottom: 12 }}>+ Plan something new</Btn>
 
         <div style={{ display: "flex", gap: 8 }}>
           <input value={joinCode} onChange={e => setJoinCode(e.target.value)} onKeyDown={e => e.key === "Enter" && handleJoin()} placeholder="Join with invite code…" style={{ flex: 1, border: `1px solid ${C.line}`, borderRadius: 12, padding: "10px 14px", fontFamily: T.font, fontSize: 13.5, color: C.ink, background: C.surface, outline: "none" }} />
@@ -303,25 +303,35 @@ const ONBOARDING_STEPS = ["basics", "details", "prompts"];
 
 function OnboardingStep({ step, data, onChange }) {
   if (step === "basics") {
-    const isTrip = data.occasionType === "trip";
+    const isTrip = ["trip", "getaway"].includes(data.occasionType);
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ fontSize: 22, fontWeight: 700, fontFamily: T.wm, color: C.ink }}>What's the occasion?</div>
         <div style={{ fontSize: 13.5, color: C.muted }}>Tell Junie the basics and she'll take it from here.</div>
 
-        {/* Occasion type toggle */}
-        <div style={{ display: "flex", gap: 3, background: C.bgSubtle, padding: 3, borderRadius: 999, border: `1px solid ${C.line}` }}>
-          {["event", "trip"].map(t => (
-            <button key={t} onClick={() => onChange("occasionType", t)} style={{ flex: 1, border: "none", cursor: "pointer", borderRadius: 999, padding: "10px 0", background: (data.occasionType || "event") === t ? C.surface : "transparent", color: (data.occasionType || "event") === t ? C.ink : C.muted, fontFamily: T.font, fontSize: 13.5, fontWeight: (data.occasionType || "event") === t ? 700 : 500, transition: "all .15s" }}>
-              {t === "event" ? "🎉 Event" : "✈️ Trip"}
-            </button>
-          ))}
+        {/* Occasion type picker */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {[
+            { id: "event", label: "🎉 Party" },
+            { id: "trip", label: "✈️ Trip" },
+            { id: "getaway", label: "🏝 Getaway" },
+            { id: "date", label: "🌹 Date night" },
+            { id: "selfcare", label: "🧖 Self-care" },
+            { id: "other", label: "✨ Something else" },
+          ].map(t => {
+            const on = (data.occasionType || "event") === t.id;
+            return (
+              <button key={t.id} onClick={() => onChange("occasionType", t.id)} className="j-chip" style={{ border: on ? "none" : `1px solid ${C.pillLine}`, background: on ? C.sendBg : "transparent", color: on ? C.sendInk : C.ink, borderRadius: 999, padding: "9px 15px", fontFamily: T.font, fontSize: 13, fontWeight: on ? 700 : 500, cursor: "pointer" }}>
+                {t.label}
+              </button>
+            );
+          })}
         </div>
 
         {[
           { key: "name", label: isTrip ? "Trip name" : "Event name", placeholder: isTrip ? "e.g. Madrid Birthday Trip, Girls Trip…" : "e.g. Jordanteenth, Mia's 30th…" },
           { key: "hostName", label: "Your name", placeholder: "Who's organizing?" },
-          { key: "venue", label: isTrip ? "Destination" : "Venue", placeholder: isTrip ? "e.g. Madrid, Spain" : "Name or address" },
+          { key: "venue", label: isTrip ? "Destination" : data.occasionType === "date" ? "Spot / neighborhood" : data.occasionType === "selfcare" ? "Where (home, spa, city…)" : "Venue", placeholder: isTrip ? "e.g. Madrid, Spain" : "Name, address, or area" },
         ].map(f => (
           <div key={f.key}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: C.muted, marginBottom: 6 }}>{f.label}</div>
@@ -408,8 +418,8 @@ function Onboarding({ onComplete, onCancel }) {
     } else {
       // Build event object
       const brief = [
-        { id: genId(), key: data.occasionType === "trip" ? "Destination" : "Venue", value: data.venue || "" },
-        { id: genId(), key: data.occasionType === "trip" ? "Style" : "Dress", value: data.dressCode || "" },
+        { id: genId(), key: ["trip","getaway"].includes(data.occasionType) ? "Destination" : data.occasionType === "date" ? "Spot" : data.occasionType === "selfcare" ? "Where" : "Venue", value: data.venue || "" },
+        { id: genId(), key: ["event"].includes(data.occasionType || "event") ? "Dress" : "Style", value: data.dressCode || "" },
         { id: genId(), key: "Guests", value: data.guestCount || "" },
         { id: genId(), key: "Vibe", value: data.vibe || "" },
       ].filter(r => r.value);
@@ -424,12 +434,12 @@ function Onboarding({ onComplete, onCancel }) {
         chips: data.chips || [],
         role: "creator",
         inviteCode: genId() + genId(),
-        todos: [
-          { id: genId(), label: "Lock the venue" },
-          { id: genId(), label: "Send invites" },
-          { id: genId(), label: "Plan the playlist" },
-          { id: genId(), label: "Sort the food & drinks" },
-        ],
+        todos: ({
+          trip: ["Book flights", "Lock the stay", "Build the itinerary", "Sort ground transport"],
+          getaway: ["Book the stay", "Plan the drive", "Build the itinerary", "Pack list"],
+          date: ["Make the reservation", "Plan the after-spot", "Sort the outfit", "Book anything ticketed"],
+          selfcare: ["Book appointments", "Clear the calendar", "Stock the essentials", "Set the do-not-disturb"],
+        }[data.occasionType] || ["Lock the venue", "Send invites", "Plan the playlist", "Sort the food & drinks"]).map(label => ({ id: genId(), label })),
         checks: {},
         savedList: [],
         pins: [],
@@ -440,7 +450,7 @@ function Onboarding({ onComplete, onCancel }) {
   };
 
   const canNext = () => {
-    if (step === 0) { const isTrip = data.occasionType === 'trip'; return !!(data.name && data.mainDate && (isTrip ? data.endDate : true)); }
+    if (step === 0) { const isTrip = ['trip','getaway'].includes(data.occasionType); return !!(data.name && data.mainDate && (isTrip ? data.endDate : true)); }
     return true;
   };
 
@@ -598,7 +608,7 @@ function ChatTab({ event, messages, setMessages, onSave, chips, onEditChips }) {
               {confirming ? "Tap to reset" : "Junie"}
             </div>
             <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: C.muted, marginTop: 5 }}>
-              {confirming ? "chat will clear" : event.name || "your party planner"}
+              {confirming ? "chat will clear" : event.name || "your personal planner"}
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
@@ -817,13 +827,13 @@ function CalendarModule({ event, dayPlans, onDayPlanChange, onAskJunie }) {
 
   const DAYNAMES = { Sun: "Sunday", Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday", Sat: "Saturday" };
   const tagFor = (d) => {
-    const isTrip = event.occasionType === "trip";
+    const isTrip = ["trip","getaway"].includes(event.occasionType);
     if (isTrip) {
       if (d.isMain) return "✈️ First day";
       if (d.isEnd) return "✈️ Last day";
       return null;
     }
-    if (d.isMain) return "🎂 Main event";
+    if (d.isMain) return ({date:"🌹 The night",selfcare:"🧖 The day",other:"✨ The day"})[event.occasionType] || "🎉 Main event";
     if (d.offset === -1) return "Day before";
     if (d.offset === 1) return "Day after";
     if (d.offset < 0 && d.offset >= -3) return "Weekend before";
