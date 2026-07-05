@@ -329,7 +329,7 @@ function OnboardingStep({ step, data, onChange }) {
         </div>
 
         {[
-          { key: "name", label: isTrip ? "Trip name" : "Event name", placeholder: isTrip ? "e.g. Madrid Birthday Trip, Girls Trip…" : "e.g. Jordanteenth, Mia's 30th…" },
+          { key: "name", label: "Name it", placeholder: isTrip ? "e.g. Madrid Trip, Cabin Weekend…" : data.occasionType === "date" ? "e.g. Anniversary Night" : data.occasionType === "selfcare" ? "e.g. Reset Day" : "e.g. Jordanteenth, Mia's 30th…" },
           { key: "hostName", label: "Your name", placeholder: "Who's organizing?" },
           { key: "venue", label: isTrip ? "Destination" : data.occasionType === "date" ? "Spot / neighborhood" : data.occasionType === "selfcare" ? "Where (home, spa, city…)" : "Venue", placeholder: isTrip ? "e.g. Madrid, Spain" : "Name, address, or area" },
         ].map(f => (
