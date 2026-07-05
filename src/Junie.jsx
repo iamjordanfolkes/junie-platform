@@ -159,7 +159,7 @@ async function generatePrompts(event) {
   const ask = `Based on this event brief, generate exactly 6 short, specific, useful prompt suggestions the host might want to ask their party planner. Return ONLY a JSON array of 6 strings. No preamble, no markdown.`;
   try {
     const txt = await callAPI({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 300,
       messages: [{ role: "user", content: persona + "\n\n" + ask }],
     });
@@ -185,7 +185,7 @@ async function getReply(history, event) {
   ];
   try {
     const txt = await callAPI({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 1000,
       tools: [{ type: "web_search_20250305", name: "web_search" }],
       messages: apiMessages,
