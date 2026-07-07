@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import ImportItinerary from "./ImportItinerary";
 
 // ─── FONTS ────────────────────────────────────────────────────────────────────
 const FONT_LINK = document.createElement("link");
@@ -258,7 +259,7 @@ function EventCard({ event, onSelect, onDelete }) {
   );
 }
 
-function Dashboard({ events, onCreate, onSelect, onDelete, onJoin }) {
+function Dashboard({ events, onCreate, onSelect, onDelete, onJoin, onImportClick }) {
   const [joinCode, setJoinCode] = useState("");
   const [joining, setJoining] = useState(false);
 
@@ -292,6 +293,9 @@ function Dashboard({ events, onCreate, onSelect, onDelete, onJoin }) {
         )}
 
         <Btn primary onClick={onCreate} style={{ width: "100%", marginBottom: 12 }}>+ Plan something new</Btn>
+        <button onClick={onImportClick} style={{ width: "100%", marginTop: 10, border: `1px solid ${C.pillLine}`, borderRadius: 999, padding: "12px 0", background: "transparent", color: C.ink, fontFamily: T.font, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
+          Import itinerary
+        </button>
 
         <div style={{ display: "flex", gap: 8 }}>
           <input value={joinCode} onChange={e => setJoinCode(e.target.value)} onKeyDown={e => e.key === "Enter" && handleJoin()} placeholder="Join with invite code…" style={{ flex: 1, border: `1px solid ${C.line}`, borderRadius: 12, padding: "10px 14px", fontFamily: T.font, fontSize: 13.5, color: C.ink, background: C.surface, outline: "none" }} />
@@ -548,6 +552,9 @@ function InviteModal({ event, onClose }) {
         <div style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <div style={{ fontFamily: T.wm, fontWeight: 700, fontSize: 22, letterSpacing: "0.08em", color: C.accent }}>{code}</div>
           <button onClick={copy} style={{ border: `1px solid ${C.pillLine}`, borderRadius: 10, padding: "8px 14px", background: "transparent", color: copied ? C.accent : C.ink, fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{copied ? "Copied ✓" : "Copy"}</button>
+        <button onClick={onImportClick} style={{ width: "100%", marginTop: 8, padding: "11px 0", borderRadius: 14, border: `1px solid ${C.pillLine}`, background: "transparent", color: C.ink, fontFamily: T.font, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
+          Import itinerary
+        </button>
         </div>
         <div style={{ fontSize: 12, color: C.faint, textAlign: "center" }}>Collaborators can view, edit, and plan alongside you.</div>
       </div>
@@ -955,7 +962,7 @@ function CalendarModule({ event, dayPlans, onDayPlanChange, onAskJunie }) {
   );
 }
 
-function PlanTab({ event, onUpdate, onShowInvite }) {
+function PlanTab({ event, onUpdate, onShowInvite, onImportClick }) {
   const { brief = [], todos = [], checks = {}, dayPlans = {} } = event;
   const days = daysUntil(event.mainDate);
   const done = todos.filter(x => checks[x.id]).length;
@@ -1194,6 +1201,7 @@ function TabBar({ active, onChange, savedCount }) {
 function EventShell({ event, onUpdate, onBack }) {
   const [tab, setTab] = useState("chat");
   const [showInvite, setShowInvite] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [loaded, setLoaded] = useState(!IS_DEPLOYED);
   const isFirstRender = useRef(true);
 
@@ -1249,11 +1257,19 @@ function EventShell({ event, onUpdate, onBack }) {
 
       <div style={{ flex: 1, minHeight: 0 }}>
         {tab === "chat" && <ChatTab event={event} messages={messages} setMessages={msgs => onUpdate({ messages: msgs })} onSave={onSave} chips={chips} onEditChips={onEditChips} />}
-        {tab === "plan" && <PlanTab event={event} onUpdate={onUpdate} onShowInvite={() => setShowInvite(true)} />}
+        {tab === "plan" && <PlanTab event={event} onUpdate={onUpdate} onShowInvite={() => setShowInvite(true)} onImportClick={() => setShowImport(true)} />}
         {tab === "saved" && <SavedTab savedList={savedList} pins={pins} onAddPin={onAddPin} onRemovePin={onRemovePin} onRemoveCard={onRemoveCard} />}
       </div>
       <TabBar active={tab} onChange={setTab} savedCount={savedList.length + pins.length} />
       {showInvite && <InviteModal event={event} onClose={() => setShowInvite(false)} />}
+      {showImport && (
+        <ImportItinerary
+          mode="update"
+          existingEvent={event}
+          onUpdate={(patch) => onUpdate(patch)}
+          onClose={() => setShowImport(false)}
+        />
+      )}
     </div>
   );
 }
@@ -1317,7 +1333,8 @@ export default function Junie() {
   const init = lsLoad();
   const [events, setEvents] = useState(init.events?.length ? init.events : [EXAMPLE_SEED]);
   const [activeId, setActiveId] = useState(null);
-  const [view, setView] = useState("dashboard"); // dashboard | onboarding | event
+  const [view, setView] = useState("dashboard");
+  const [showImportNew, setShowImportNew] = useState(false); // dashboard | onboarding | event
 
   // Persist events to localStorage
   useEffect(() => { lsSave({ events }); }, [events]);
@@ -1389,7 +1406,16 @@ export default function Junie() {
         onSelect={(id) => { setActiveId(id); setView("event"); }}
         onDelete={deleteEvent}
         onJoin={joinEvent}
+        onImportClick={() => setShowImportNew(true)}
       />
+      {showImportNew && (
+        <ImportItinerary
+          mode="create"
+          existingEvent={null}
+          onCreate={(ev) => { setEvents((e) => [...e, ev]); setActiveId(ev.id); setView("event"); }}
+          onClose={() => setShowImportNew(false)}
+        />
+      )}
     </div>
   );
 }
