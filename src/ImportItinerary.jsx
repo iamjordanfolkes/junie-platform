@@ -1,15 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// ImportItinerary.jsx
-//
-// Fully self-contained. Does not import anything from Junie.jsx and defines its
-// own tiny copy of the color/type tokens so it can be dropped in or deleted
-// without touching any other file's internals.
-//
-// To fully revert this feature: delete this file, remove the one `import`
-// line for it in Junie.jsx, and remove the two button/modal call-sites that
-// reference it (search for "ImportItinerary" in Junie.jsx).
-// ─────────────────────────────────────────────────────────────────────────────
-
 import { useState } from "react";
 
 const IC = {
@@ -22,43 +10,12 @@ const IC = {
 const IFONT = "'DM Sans', system-ui, sans-serif";
 const IWM = "'Syne', sans-serif";
 
-const EXAMPLE_JSON = `{
-  "title": "Lisbon Long Weekend",
-  "destination": "Lisbon, Portugal",
-  "date": "2026-09-11",
-  "whosComing": "Me + Sam",
-  "packingNotes": "Light layers, comfortable walking shoes",
-  "vibe": "Slow mornings, good food, no rigid plans",
-  "checklist": [
-    "Book flights",
-    "Reserve the apartment",
-    "Dinner reservation for Saturday night"
-  ],
-  "days": [
-    {
-      "date": "2026-09-11",
-      "label": "Arrival Day",
-      "items": [
-        { "time": "3:00 PM", "title": "Land + check in", "notes": "Flight lands 2:40pm" },
-        { "time": "7:00 PM", "title": "Dinner in Alfama", "notes": "Casual, near the apartment" }
-      ]
-    },
-    {
-      "date": "2026-09-12",
-      "label": "Exploring",
-      "items": [
-        { "time": "10:00 AM", "title": "Belém Tower + Jerónimos Monastery" },
-        { "time": "1:00 PM", "title": "Pastéis de Belém", "notes": "Get there before the line" },
-        { "time": "8:00 PM", "title": "Fado dinner show" }
-      ]
-    }
-  ],
-  "savedTips": [
-    { "title": "Best time for Belém", "description": "Go right when it opens at 10am — it gets packed with tour buses by noon." }
-  ]
-}`;
+const IS_DEPLOYED = typeof window !== "undefined"
+  && window.location.hostname !== "localhost"
+  && !window.location.hostname.includes("127.0.0.1")
+  && window.location.protocol !== "file:";
 
-// ─── Pure functions (exported for reuse / testing) ────────────────────────────
+const EXAMPLE_TEXT = "Lisbon trip, Sept 11-12. Me + Sam.\nPack light layers and good walking shoes.\nVibe: slow mornings, good food, nothing too planned out.\n\nTo do: book flights, reserve the apartment, get a dinner reservation for Saturday night.\n\nDay 1 (arrival):\n- Land around 2:40pm, check in around 3\n- Dinner in Alfama around 7pm, something casual near the apartment\n\nDay 2:\n- 10am Belem Tower + Jeronimos Monastery\n- Pasteis de Belem around 1pm - get there before the line forms\n- Fado dinner show at 8pm\n\nTip: go to Belem right when it opens at 10am, it gets packed with tour buses by noon.";
 
 export function validateItinerary(obj) {
   const errors = [];
@@ -74,62 +31,47 @@ export function validateItinerary(obj) {
   if (obj.whosComing !== undefined && typeof obj.whosComing !== "string") errors.push('"whosComing" must be a string.');
   if (obj.packingNotes !== undefined && typeof obj.packingNotes !== "string") errors.push('"packingNotes" must be a string.');
   if (obj.vibe !== undefined && typeof obj.vibe !== "string") errors.push('"vibe" must be a string.');
-
   if (obj.checklist !== undefined) {
     if (!Array.isArray(obj.checklist)) errors.push('"checklist" must be an array of strings.');
-    else obj.checklist.forEach((item, i) => {
-      if (typeof item !== "string") errors.push(`checklist[${i}] must be a string.`);
-    });
+    else obj.checklist.forEach((item, i) => { if (typeof item !== "string") errors.push("checklist[" + i + "] must be a string."); });
   }
-
   if (obj.days !== undefined) {
     if (!Array.isArray(obj.days)) {
       errors.push('"days" must be an array.');
     } else {
       obj.days.forEach((day, i) => {
-        if (typeof day !== "object" || day === null || Array.isArray(day)) {
-          errors.push(`days[${i}] must be an object.`);
-          return;
-        }
+        if (typeof day !== "object" || day === null || Array.isArray(day)) { errors.push("days[" + i + "] must be an object."); return; }
         if (!day.date || typeof day.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(day.date)) {
-          errors.push(`days[${i}].date is required and must be formatted YYYY-MM-DD.`);
+          errors.push("days[" + i + "].date is required and must be formatted YYYY-MM-DD.");
         }
-        if (day.label !== undefined && typeof day.label !== "string") errors.push(`days[${i}].label must be a string.`);
+        if (day.label !== undefined && typeof day.label !== "string") errors.push("days[" + i + "].label must be a string.");
         if (day.items !== undefined) {
           if (!Array.isArray(day.items)) {
-            errors.push(`days[${i}].items must be an array.`);
+            errors.push("days[" + i + "].items must be an array.");
           } else {
             day.items.forEach((item, j) => {
-              if (typeof item !== "object" || item === null || Array.isArray(item)) {
-                errors.push(`days[${i}].items[${j}] must be an object.`);
-                return;
-              }
-              if (!item.title || typeof item.title !== "string") errors.push(`days[${i}].items[${j}].title is required.`);
-              if (item.time !== undefined && typeof item.time !== "string") errors.push(`days[${i}].items[${j}].time must be a string.`);
-              if (item.notes !== undefined && typeof item.notes !== "string") errors.push(`days[${i}].items[${j}].notes must be a string.`);
-              if (item.link !== undefined && typeof item.link !== "string") errors.push(`days[${i}].items[${j}].link must be a string.`);
+              if (typeof item !== "object" || item === null || Array.isArray(item)) { errors.push("days[" + i + "].items[" + j + "] must be an object."); return; }
+              if (!item.title || typeof item.title !== "string") errors.push("days[" + i + "].items[" + j + "].title is required.");
+              if (item.time !== undefined && typeof item.time !== "string") errors.push("days[" + i + "].items[" + j + "].time must be a string.");
+              if (item.notes !== undefined && typeof item.notes !== "string") errors.push("days[" + i + "].items[" + j + "].notes must be a string.");
+              if (item.link !== undefined && typeof item.link !== "string") errors.push("days[" + i + "].items[" + j + "].link must be a string.");
             });
           }
         }
       });
     }
   }
-
   if (obj.savedTips !== undefined) {
     if (!Array.isArray(obj.savedTips)) {
       errors.push('"savedTips" must be an array.');
     } else {
       obj.savedTips.forEach((tip, i) => {
-        if (typeof tip !== "object" || tip === null || Array.isArray(tip)) {
-          errors.push(`savedTips[${i}] must be an object.`);
-          return;
-        }
-        if (!tip.title || typeof tip.title !== "string") errors.push(`savedTips[${i}].title is required.`);
-        if (tip.description !== undefined && typeof tip.description !== "string") errors.push(`savedTips[${i}].description must be a string.`);
+        if (typeof tip !== "object" || tip === null || Array.isArray(tip)) { errors.push("savedTips[" + i + "] must be an object."); return; }
+        if (!tip.title || typeof tip.title !== "string") errors.push("savedTips[" + i + "].title is required.");
+        if (tip.description !== undefined && typeof tip.description !== "string") errors.push("savedTips[" + i + "].description must be a string.");
       });
     }
   }
-
   return errors;
 }
 
@@ -152,32 +94,25 @@ export function buildBriefFromItinerary(parsed) {
     { key: "Packing notes", value: parsed.packingNotes || "" },
     { key: "Vibe / description", value: parsed.vibe || "" },
   ].filter((r) => r.value);
-  return rows.map((r) => ({ id: genLocalId("b"), ...r }));
+  return rows.map((r) => Object.assign({ id: genLocalId("b") }, r));
 }
 
 export function buildTodosFromItinerary(parsed) {
-  return (parsed.checklist || []).map((label) => ({ id: genLocalId("t"), label }));
+  return (parsed.checklist || []).map((label) => ({ id: genLocalId("t"), label: label }));
 }
 
-// Folds time + notes into the existing single-line `text` field so the
-// calendar's activity row component needs ZERO changes to render imported
-// items. `link` is kept as an extra harmless property (ignored by the
-// current UI, available if a future feature wants to surface it).
 export function buildDayPlansFromItinerary(parsed) {
   const dayPlans = {};
   (parsed.days || []).forEach((day) => {
     const activities = (day.items || []).map((item) => {
       let text = item.title;
-      if (item.time) text = `${item.time} — ${text}`;
-      if (item.notes) text = `${text} (${item.notes})`;
-      return {
-        id: genLocalId("a"),
-        text,
-        done: false,
-        ...(item.link ? { link: item.link } : {}),
-      };
+      if (item.time) text = item.time + " \u2014 " + text;
+      if (item.notes) text = text + " (" + item.notes + ")";
+      const act = { id: genLocalId("a"), text: text, done: false };
+      if (item.link) act.link = item.link;
+      return act;
     });
-    dayPlans[day.date] = { notes: day.label || "", activities };
+    dayPlans[day.date] = { notes: day.label || "", activities: activities };
   });
   return dayPlans;
 }
@@ -200,7 +135,7 @@ export function buildNewEventFromItinerary(parsed) {
     id: genLocalId("evt"),
     name: parsed.title,
     hostName: "",
-    mainDate,
+    mainDate: mainDate,
     endDate: endDate !== mainDate ? endDate : "",
     venue: parsed.destination || "",
     occasionType: "trip",
@@ -217,7 +152,6 @@ export function buildNewEventFromItinerary(parsed) {
   };
 }
 
-// strategy: "overwrite" | "append"
 export function mergeIntoEvent(existingEvent, parsed, strategy) {
   const importedBrief = buildBriefFromItinerary(parsed);
   const importedTodos = buildTodosFromItinerary(parsed);
@@ -235,33 +169,36 @@ export function mergeIntoEvent(existingEvent, parsed, strategy) {
       todos: importedTodos.length ? importedTodos : (existingEvent.todos || []),
       checks: {},
       dayPlans: Object.keys(importedDayPlans).length ? importedDayPlans : (existingEvent.dayPlans || {}),
-      savedList: [...importedTips, ...(existingEvent.savedList || [])],
+      savedList: importedTips.concat(existingEvent.savedList || []),
     };
   }
 
-  // append — never deletes or overwrites existing values
   const existingBrief = existingEvent.brief || [];
-  const existingKeys = new Set(existingBrief.map((r) => r.key));
-  const mergedBrief = [...existingBrief, ...importedBrief.filter((r) => !existingKeys.has(r.key))];
+  const existingKeys = {};
+  existingBrief.forEach((r) => { existingKeys[r.key] = true; });
+  const mergedBrief = existingBrief.concat(importedBrief.filter((r) => !existingKeys[r.key]));
 
   const existingTodos = existingEvent.todos || [];
-  const existingLabels = new Set(existingTodos.map((t) => t.label));
-  const mergedTodos = [...existingTodos, ...importedTodos.filter((t) => !existingLabels.has(t.label))];
+  const existingLabels = {};
+  existingTodos.forEach((t) => { existingLabels[t.label] = true; });
+  const mergedTodos = existingTodos.concat(importedTodos.filter((t) => !existingLabels[t.label]));
 
-  const mergedDayPlans = { ...(existingEvent.dayPlans || {}) };
-  Object.entries(importedDayPlans).forEach(([date, plan]) => {
+  const mergedDayPlans = Object.assign({}, existingEvent.dayPlans || {});
+  Object.keys(importedDayPlans).forEach((date) => {
+    const plan = importedDayPlans[date];
     const existingPlan = mergedDayPlans[date];
     if (!existingPlan) {
       mergedDayPlans[date] = plan;
     } else {
-      const existingTexts = new Set((existingPlan.activities || []).map((a) => a.text));
-      const newActivities = plan.activities.filter((a) => !existingTexts.has(a.text));
+      const existingTexts = {};
+      (existingPlan.activities || []).forEach((a) => { existingTexts[a.text] = true; });
+      const newActivities = plan.activities.filter((a) => !existingTexts[a.text]);
       const combinedNotes = existingPlan.notes
-        ? (plan.notes && !existingPlan.notes.includes(plan.notes) ? `${existingPlan.notes} · ${plan.notes}` : existingPlan.notes)
+        ? (plan.notes && existingPlan.notes.indexOf(plan.notes) === -1 ? existingPlan.notes + " \u00b7 " + plan.notes : existingPlan.notes)
         : (plan.notes || "");
       mergedDayPlans[date] = {
         notes: combinedNotes,
-        activities: [...(existingPlan.activities || []), ...newActivities],
+        activities: (existingPlan.activities || []).concat(newActivities),
       };
     }
   });
@@ -274,19 +211,55 @@ export function mergeIntoEvent(existingEvent, parsed, strategy) {
     brief: mergedBrief,
     todos: mergedTodos,
     dayPlans: mergedDayPlans,
-    savedList: [...importedTips, ...(existingEvent.savedList || [])],
+    savedList: importedTips.concat(existingEvent.savedList || []),
     endDate: mergedEndDate,
   };
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+const SCHEMA_REFERENCE = "{\n  \"title\": string,\n  \"destination\": string,\n  \"date\": \"YYYY-MM-DD\",\n  \"whosComing\": string,\n  \"packingNotes\": string,\n  \"vibe\": string,\n  \"checklist\": [string, ...],\n  \"days\": [\n    {\n      \"date\": \"YYYY-MM-DD\",\n      \"label\": string,\n      \"items\": [\n        { \"time\": string, \"title\": string, \"notes\": string, \"link\": string }\n      ]\n    }\n  ],\n  \"savedTips\": [\n    { \"title\": string, \"description\": string }\n  ]\n}";
 
-export default function ImportItinerary({ mode, existingEvent, onCreate, onUpdate, onClose }) {
+async function organizeWithAI(rawText) {
+  const today = new Date().toISOString().slice(0, 10);
+  const prompt = "You convert a person's pasted trip plan \u2014 written in ANY format: casual notes, a copied email, bullet points, a text thread, whatever \u2014 into structured JSON for a trip-planning app.\n\nReturn ONLY valid JSON. No markdown code fences, no commentary, nothing before or after it. Match exactly this shape:\n" + SCHEMA_REFERENCE + "\n\nRules:\n- If exact calendar dates aren't given, invent a reasonable consecutive date range starting a few weeks from today (today is " + today + "), staying internally consistent with any \"Day 1 / Day 2\" structure in the source text.\n- Pull anything that sounds like a packing note, a vibe/description, or a to-do into the matching field.\n- Any recommendation, tip, or \"don't miss this\" line becomes a savedTips entry.\n- Keep item titles short \u2014 a place or activity name. Put extra detail in notes.\n- Omit a field entirely if the information truly isn't present, rather than inventing it.\n\nHere is what they pasted:\n\"\"\"\n" + rawText + "\n\"\"\"";
+
+  const callOnce = async (url) => {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 2000,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+    if (!res.ok) throw new Error("request failed");
+    const data = await res.json();
+    const text = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n").trim();
+    const cleaned = text.replace(/```json|```/g, "").trim();
+    return JSON.parse(cleaned);
+  };
+
+  try {
+    if (IS_DEPLOYED) return await callOnce("/api/chat");
+    return await callOnce("https://api.anthropic.com/v1/messages");
+  } catch (e) {
+    return null;
+  }
+}
+
+export default function ImportItinerary(props) {
+  const mode = props.mode;
+  const existingEvent = props.existingEvent;
+  const onCreate = props.onCreate;
+  const onUpdate = props.onUpdate;
+  const onClose = props.onClose;
+
   const [raw, setRaw] = useState("");
-  const [parseError, setParseError] = useState("");
-  const [schemaErrors, setSchemaErrors] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [aiCouldntParse, setAiCouldntParse] = useState(false);
+  const [technicalErrors, setTechnicalErrors] = useState([]);
   const [parsed, setParsed] = useState(null);
-  const [showExample, setShowExample] = useState(false);
+  const [showFormat, setShowFormat] = useState(false);
 
   const existingHasData = !!existingEvent && (
     (existingEvent.todos && existingEvent.todos.length > 0) ||
@@ -294,28 +267,33 @@ export default function ImportItinerary({ mode, existingEvent, onCreate, onUpdat
     (existingEvent.dayPlans && Object.keys(existingEvent.dayPlans).length > 0)
   );
 
-  const runValidation = () => {
-    setParseError("");
-    setSchemaErrors([]);
-    setParsed(null);
-    let obj;
-    try {
-      obj = JSON.parse(raw);
-    } catch (err) {
-      setParseError(err.message || "Could not parse this as JSON.");
-      return;
+  const reset = () => { setParsed(null); setAiCouldntParse(false); setTechnicalErrors([]); };
+  const loadExample = () => { setRaw(EXAMPLE_TEXT); reset(); };
+
+  const organize = async () => {
+    const text = raw.trim();
+    if (!text) return;
+    reset();
+
+    let direct = null;
+    try { direct = JSON.parse(text); } catch (e) { direct = null; }
+    if (direct) {
+      const errs = validateItinerary(direct);
+      if (errs.length === 0) { setParsed(direct); return; }
+      setTechnicalErrors(errs);
     }
-    const errors = validateItinerary(obj);
-    if (errors.length) {
-      setSchemaErrors(errors);
-      return;
+
+    setLoading(true);
+    const aiResult = await organizeWithAI(text);
+    setLoading(false);
+
+    if (aiResult) {
+      const errs = validateItinerary(aiResult);
+      if (errs.length === 0) { setParsed(aiResult); return; }
+      setTechnicalErrors(errs);
     }
-    setParsed(obj);
+    setAiCouldntParse(true);
   };
-
-  const reset = () => { setParsed(null); setSchemaErrors([]); setParseError(""); };
-
-  const loadExample = () => { setRaw(EXAMPLE_JSON); reset(); };
 
   const doCreate = () => {
     const event = buildNewEventFromItinerary(parsed);
@@ -329,106 +307,121 @@ export default function ImportItinerary({ mode, existingEvent, onCreate, onUpdat
     onClose();
   };
 
-  const dayCount = parsed?.days?.length || 0;
-  const tipCount = parsed?.savedTips?.length || 0;
-  const checklistCount = parsed?.checklist?.length || 0;
+  const dayCount = (parsed && parsed.days && parsed.days.length) || 0;
+  const tipCount = (parsed && parsed.savedTips && parsed.savedTips.length) || 0;
+  const checklistCount = (parsed && parsed.checklist && parsed.checklist.length) || 0;
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 200, background: IC.bg, display: "flex", flexDirection: "column", fontFamily: IFONT }}>
-      {/* Header */}
       <div style={{ padding: "52px 20px 16px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <div style={{ fontFamily: IWM, fontWeight: 800, fontSize: 22, color: IC.ink }}>Import itinerary</div>
+          <div style={{ fontFamily: IWM, fontWeight: 800, fontSize: 22, color: IC.ink }}>Add your itinerary</div>
           <div style={{ fontSize: 12.5, color: IC.muted, marginTop: 4 }}>
-            {mode === "update" ? `Adding to ${existingEvent?.name || "this trip"}` : "Paste JSON to build a new trip instantly"}
+            {mode === "update" ? ("Adding to " + (existingEvent && existingEvent.name ? existingEvent.name : "this trip")) : "However it's written, Junie will turn it into a plan"}
           </div>
         </div>
-        <button onClick={onClose} style={{ width: 34, height: 34, borderRadius: "50%", border: `1px solid ${IC.pillLine}`, background: "transparent", color: IC.muted, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <button onClick={onClose} style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid " + IC.pillLine, background: "transparent", color: IC.muted, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
         </button>
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "0 20px 20px" }}>
-        {/* Textarea + errors, shown until valid */}
         {!parsed && (
-          <>
+          <div>
             <textarea
               value={raw}
               onChange={(e) => { setRaw(e.target.value); reset(); }}
-              placeholder="Paste itinerary JSON here…"
+              placeholder="Paste your itinerary here — an email, notes, bullet points, anything. Junie will organize it."
               rows={12}
+              disabled={loading}
               style={{
-                width: "100%", border: `1px solid ${IC.line}`, borderRadius: 14, padding: "14px 16px",
-                fontFamily: "'SF Mono', 'Menlo', monospace", fontSize: 12.5, lineHeight: 1.6, color: IC.ink,
-                background: IC.surface, outline: "none", resize: "vertical",
+                width: "100%", border: "1px solid " + IC.line, borderRadius: 14, padding: "14px 16px",
+                fontFamily: IFONT, fontSize: 14, lineHeight: 1.6, color: IC.ink,
+                background: loading ? IC.bg : IC.surface, outline: "none", resize: "vertical",
               }}
             />
 
-            {parseError && (
-              <div style={{ marginTop: 10, background: IC.dangerSoft, border: `1px solid ${IC.danger}`, borderRadius: 12, padding: "12px 14px" }}>
-                <div style={{ fontSize: 12.5, fontWeight: 700, color: IC.danger, marginBottom: 4 }}>Couldn't parse this as JSON</div>
-                <div style={{ fontSize: 12, color: IC.danger, fontFamily: "'SF Mono', monospace" }}>{parseError}</div>
+            {loading && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12, padding: "12px 14px", background: IC.accentSoft, borderRadius: 12 }}>
+                <div style={{ display: "flex", gap: 4 }}>
+                  {[0, 1, 2].map((i) => (
+                    <span key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: IC.accent, animation: "bounceDot 1.1s " + (i * 0.15) + "s infinite ease-in-out" }} />
+                  ))}
+                </div>
+                <span style={{ fontSize: 13, color: IC.accent, fontWeight: 600 }}>Junie's organizing this\u2026</span>
+                <style>{"@keyframes bounceDot { 0%,60%,100% { opacity:.4; transform:translateY(0) } 30% { opacity:1; transform:translateY(-3px) } }"}</style>
               </div>
             )}
 
-            {schemaErrors.length > 0 && (
-              <div style={{ marginTop: 10, background: IC.dangerSoft, border: `1px solid ${IC.danger}`, borderRadius: 12, padding: "12px 14px" }}>
-                <div style={{ fontSize: 12.5, fontWeight: 700, color: IC.danger, marginBottom: 6 }}>
-                  {schemaErrors.length} issue{schemaErrors.length > 1 ? "s" : ""} found
+            {aiCouldntParse && !loading && (
+              <div style={{ marginTop: 10, background: IC.dangerSoft, border: "1px solid " + IC.danger, borderRadius: 12, padding: "12px 14px" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: IC.danger, marginBottom: 4 }}>Couldn't quite make sense of this one</div>
+                <div style={{ fontSize: 12.5, color: IC.danger, lineHeight: 1.5 }}>
+                  Try adding a bit more detail \u2014 dates, place names, or what happens each day \u2014 and give it another try.
                 </div>
-                <ul style={{ margin: 0, paddingLeft: 18 }}>
-                  {schemaErrors.map((e, i) => (
-                    <li key={i} style={{ fontSize: 12, color: IC.danger, lineHeight: 1.6 }}>{e}</li>
-                  ))}
-                </ul>
+                {technicalErrors.length > 0 && (
+                  <details style={{ marginTop: 8 }}>
+                    <summary style={{ fontSize: 11.5, color: IC.danger, cursor: "pointer" }}>Technical details</summary>
+                    <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+                      {technicalErrors.map((e, i) => (
+                        <li key={i} style={{ fontSize: 11.5, color: IC.danger, lineHeight: 1.5 }}>{e}</li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
               </div>
             )}
 
             <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-              <button onClick={runValidation} disabled={!raw.trim()} style={{
+              <button onClick={organize} disabled={!raw.trim() || loading} style={{
                 flex: 1, border: "none", borderRadius: 999, padding: "12px 0",
-                background: raw.trim() ? IC.sendBg : "rgba(31,27,22,0.08)",
-                color: raw.trim() ? IC.sendInk : IC.faint,
-                fontFamily: IFONT, fontSize: 14, fontWeight: 700, cursor: raw.trim() ? "pointer" : "default",
+                background: raw.trim() && !loading ? IC.sendBg : "rgba(31,27,22,0.08)",
+                color: raw.trim() && !loading ? IC.sendInk : IC.faint,
+                fontFamily: IFONT, fontSize: 14, fontWeight: 700, cursor: raw.trim() && !loading ? "pointer" : "default",
               }}>
-                Check it
+                {loading ? "Organizing\u2026" : "Organize it"}
               </button>
-              <button onClick={loadExample} style={{ border: `1px solid ${IC.pillLine}`, borderRadius: 999, padding: "12px 18px", background: "transparent", color: IC.ink, fontFamily: IFONT, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
+              <button onClick={loadExample} disabled={loading} style={{ border: "1px solid " + IC.pillLine, borderRadius: 999, padding: "12px 18px", background: "transparent", color: IC.ink, fontFamily: IFONT, fontSize: 13.5, fontWeight: 600, cursor: loading ? "default" : "pointer", opacity: loading ? 0.5 : 1 }}>
                 Try an example
               </button>
             </div>
 
-            <button onClick={() => setShowExample((v) => !v)} style={{ marginTop: 16, border: "none", background: "transparent", color: IC.accent, fontFamily: IFONT, fontSize: 12.5, fontWeight: 700, cursor: "pointer", padding: 0 }}>
-              {showExample ? "Hide format reference" : "See the expected JSON format"}
+            <button onClick={() => setShowFormat(!showFormat)} style={{ marginTop: 16, border: "none", background: "transparent", color: IC.muted, fontFamily: IFONT, fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}>
+              {showFormat ? "Hide" : "Prefer structured JSON?"}
             </button>
-            {showExample && (
-              <pre style={{
-                marginTop: 10, background: IC.surface, border: `1px solid ${IC.line}`, borderRadius: 12,
-                padding: "14px 16px", fontSize: 11, lineHeight: 1.6, color: IC.muted, overflowX: "auto",
-                fontFamily: "'SF Mono', 'Menlo', monospace", whiteSpace: "pre",
-              }}>{EXAMPLE_JSON}</pre>
+            {showFormat && (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: 12, color: IC.muted, marginBottom: 8 }}>Paste JSON in this exact shape and it'll import instantly, no waiting:</div>
+                <pre style={{
+                  background: IC.surface, border: "1px solid " + IC.line, borderRadius: 12,
+                  padding: "14px 16px", fontSize: 11, lineHeight: 1.6, color: IC.muted, overflowX: "auto",
+                  fontFamily: "'SF Mono', 'Menlo', monospace", whiteSpace: "pre",
+                }}>{SCHEMA_REFERENCE}</pre>
+              </div>
             )}
-          </>
+          </div>
         )}
 
-        {/* Valid — show preview + confirm */}
         {parsed && (
           <div>
-            <div style={{ background: IC.surface, border: `1px solid ${IC.line}`, borderRadius: 16, padding: "18px 18px 16px" }}>
+            <div style={{ background: IC.surface, border: "1px solid " + IC.line, borderRadius: 16, padding: "18px 18px 16px" }}>
               <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: IC.accent, marginBottom: 6 }}>Looks good</div>
               <div style={{ fontFamily: IWM, fontWeight: 700, fontSize: 19, color: IC.ink, marginBottom: 4 }}>{parsed.title}</div>
               <div style={{ fontSize: 13, color: IC.muted, marginBottom: 12 }}>
-                {parsed.destination ? `${parsed.destination} · ` : ""}{parsed.date}{computeEndDate(parsed) !== parsed.date ? ` → ${computeEndDate(parsed)}` : ""}
+                {parsed.destination ? (parsed.destination + " \u00b7 ") : ""}{parsed.date}{computeEndDate(parsed) !== parsed.date ? (" \u2192 " + computeEndDate(parsed)) : ""}
               </div>
               <div style={{ display: "flex", gap: 16, fontSize: 12.5, color: IC.ink }}>
                 <span>{checklistCount} checklist item{checklistCount === 1 ? "" : "s"}</span>
                 <span>{dayCount} day{dayCount === 1 ? "" : "s"} planned</span>
                 <span>{tipCount} tip{tipCount === 1 ? "" : "s"}</span>
               </div>
+              <div style={{ fontSize: 11.5, color: IC.muted, marginTop: 10, fontStyle: "italic" }}>
+                Double check the dates look right \u2014 you can adjust anything anytime in the Plan tab.
+              </div>
             </div>
 
             <button onClick={reset} style={{ marginTop: 10, border: "none", background: "transparent", color: IC.muted, fontFamily: IFONT, fontSize: 12.5, cursor: "pointer", padding: 0, textDecoration: "underline" }}>
-              Edit the JSON
+              Start over
             </button>
 
             {mode === "create" && (
@@ -439,23 +432,23 @@ export default function ImportItinerary({ mode, existingEvent, onCreate, onUpdat
 
             {mode === "update" && !existingHasData && (
               <button onClick={() => doUpdate("overwrite")} style={{ width: "100%", marginTop: 20, border: "none", borderRadius: 999, padding: "13px 0", background: IC.sendBg, color: IC.sendInk, fontFamily: IFONT, fontSize: 14.5, fontWeight: 700, cursor: "pointer" }}>
-                Import into this trip
+                Add to this trip
               </button>
             )}
 
             {mode === "update" && existingHasData && (
               <div style={{ marginTop: 20 }}>
                 <div style={{ fontSize: 12.5, color: IC.muted, marginBottom: 12, lineHeight: 1.5 }}>
-                  This trip already has details saved. Tips are always added, never removed — but choose how to handle the brief, checklist, and calendar:
+                  This trip already has details saved. Tips are always added, never removed \u2014 but choose how to handle the brief, checklist, and calendar:
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <button onClick={() => doUpdate("append")} style={{ border: `1px solid ${IC.pillLine}`, borderRadius: 14, padding: "13px 16px", background: "transparent", textAlign: "left", cursor: "pointer", fontFamily: IFONT }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: IC.ink }}>Append to existing</div>
+                  <button onClick={() => doUpdate("append")} style={{ border: "1px solid " + IC.pillLine, borderRadius: 14, padding: "13px 16px", background: "transparent", textAlign: "left", cursor: "pointer", fontFamily: IFONT }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: IC.ink }}>Add to what's there</div>
                     <div style={{ fontSize: 12, color: IC.muted, marginTop: 2 }}>Adds new items, keeps everything already there</div>
                   </button>
-                  <button onClick={() => doUpdate("overwrite")} style={{ border: `1px solid ${IC.danger}`, borderRadius: 14, padding: "13px 16px", background: IC.dangerSoft, textAlign: "left", cursor: "pointer", fontFamily: IFONT }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: IC.danger }}>Replace existing</div>
-                    <div style={{ fontSize: 12, color: IC.danger, marginTop: 2 }}>Overwrites the brief, checklist, and calendar with this import</div>
+                  <button onClick={() => doUpdate("overwrite")} style={{ border: "1px solid " + IC.danger, borderRadius: 14, padding: "13px 16px", background: IC.dangerSoft, textAlign: "left", cursor: "pointer", fontFamily: IFONT }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: IC.danger }}>Replace what's there</div>
+                    <div style={{ fontSize: 12, color: IC.danger, marginTop: 2 }}>Overwrites the brief, checklist, and calendar with this</div>
                   </button>
                 </div>
               </div>
