@@ -293,14 +293,15 @@ function Dashboard({ events, onCreate, onSelect, onDelete, onJoin, onImportClick
         )}
 
         <Btn primary onClick={onCreate} style={{ width: "100%", marginBottom: 12 }}>+ Plan something new</Btn>
-        <button onClick={onImportClick} style={{ width: "100%", marginTop: 10, border: `1px solid ${C.pillLine}`, borderRadius: 999, padding: "12px 0", background: "transparent", color: C.ink, fontFamily: T.font, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
+
+        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+          <input value={joinCode} onChange={e => setJoinCode(e.target.value)} onKeyDown={e => e.key === "Enter" && handleJoin()} placeholder="Join with invite code…" style={{ flex: 1, border: `1px solid ${C.line}`, borderRadius: 999, padding: "12px 16px", fontFamily: T.font, fontSize: 13.5, color: C.ink, background: C.surface, outline: "none" }} />
+          <Btn onClick={handleJoin} disabled={!joinCode.trim() || joining} style={{ flexShrink: 0 }}>{joining ? "…" : "Join"}</Btn>
+        </div>
+
+        <button onClick={onImportClick} style={{ width: "100%", border: `1px solid ${C.pillLine}`, borderRadius: 999, padding: "12px 0", background: "transparent", color: C.ink, fontFamily: T.font, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
           Import itinerary
         </button>
-
-        <div style={{ display: "flex", gap: 8 }}>
-          <input value={joinCode} onChange={e => setJoinCode(e.target.value)} onKeyDown={e => e.key === "Enter" && handleJoin()} placeholder="Join with invite code…" style={{ flex: 1, border: `1px solid ${C.line}`, borderRadius: 12, padding: "10px 14px", fontFamily: T.font, fontSize: 13.5, color: C.ink, background: C.surface, outline: "none" }} />
-          <Btn onClick={handleJoin} disabled={!joinCode.trim() || joining}>{joining ? "…" : "Join"}</Btn>
-        </div>
       </div>
     </div>
   );
