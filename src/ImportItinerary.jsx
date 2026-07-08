@@ -106,7 +106,7 @@ export function buildDayPlansFromItinerary(parsed) {
   (parsed.days || []).forEach((day) => {
     const activities = (day.items || []).map((item) => {
       let text = item.title;
-      if (item.time) text = item.time + " \u2014 " + text;
+      if (item.time) text = item.time + " — " + text;
       if (item.notes) text = text + " (" + item.notes + ")";
       const act = { id: genLocalId("a"), text: text, done: false };
       if (item.link) act.link = item.link;
@@ -220,7 +220,7 @@ const SCHEMA_REFERENCE = "{\n  \"title\": string,\n  \"destination\": string,\n 
 
 async function organizeWithAI(rawText) {
   const today = new Date().toISOString().slice(0, 10);
-  const prompt = "You convert a person's pasted trip plan \u2014 written in ANY format: casual notes, a copied email, bullet points, a text thread, whatever \u2014 into structured JSON for a trip-planning app.\n\nReturn ONLY valid JSON. No markdown code fences, no commentary, nothing before or after it. Match exactly this shape:\n" + SCHEMA_REFERENCE + "\n\nRules:\n- If exact calendar dates aren't given, invent a reasonable consecutive date range starting a few weeks from today (today is " + today + "), staying internally consistent with any \"Day 1 / Day 2\" structure in the source text.\n- Pull anything that sounds like a packing note, a vibe/description, or a to-do into the matching field.\n- Any recommendation, tip, or \"don't miss this\" line becomes a savedTips entry.\n- Keep item titles short \u2014 a place or activity name. Put extra detail in notes.\n- Omit a field entirely if the information truly isn't present, rather than inventing it.\n\nHere is what they pasted:\n\"\"\"\n" + rawText + "\n\"\"\"";
+  const prompt = "You convert a person's pasted trip plan — written in ANY format: casual notes, a copied email, bullet points, a text thread, whatever — into structured JSON for a trip-planning app.\n\nReturn ONLY valid JSON. No markdown code fences, no commentary, nothing before or after it. Match exactly this shape:\n" + SCHEMA_REFERENCE + "\n\nRules:\n- If exact calendar dates aren't given, invent a reasonable consecutive date range starting a few weeks from today (today is " + today + "), staying internally consistent with any \"Day 1 / Day 2\" structure in the source text.\n- Pull anything that sounds like a packing note, a vibe/description, or a to-do into the matching field.\n- Any recommendation, tip, or \"don't miss this\" line becomes a savedTips entry.\n- Keep item titles short — a place or activity name. Put extra detail in notes.\n- Omit a field entirely if the information truly isn't present, rather than inventing it.\n\nHere is what they pasted:\n\"\"\"\n" + rawText + "\n\"\"\"";
 
   const callOnce = async (url) => {
     const res = await fetch(url, {
@@ -348,7 +348,7 @@ export default function ImportItinerary(props) {
                     <span key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: IC.accent, animation: "bounceDot 1.1s " + (i * 0.15) + "s infinite ease-in-out" }} />
                   ))}
                 </div>
-                <span style={{ fontSize: 13, color: IC.accent, fontWeight: 600 }}>Junie's organizing this\u2026</span>
+                <span style={{ fontSize: 13, color: IC.accent, fontWeight: 600 }}>Junie's organizing this…</span>
                 <style>{"@keyframes bounceDot { 0%,60%,100% { opacity:.4; transform:translateY(0) } 30% { opacity:1; transform:translateY(-3px) } }"}</style>
               </div>
             )}
@@ -357,7 +357,7 @@ export default function ImportItinerary(props) {
               <div style={{ marginTop: 10, background: IC.dangerSoft, border: "1px solid " + IC.danger, borderRadius: 12, padding: "12px 14px" }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: IC.danger, marginBottom: 4 }}>Couldn't quite make sense of this one</div>
                 <div style={{ fontSize: 12.5, color: IC.danger, lineHeight: 1.5 }}>
-                  Try adding a bit more detail \u2014 dates, place names, or what happens each day \u2014 and give it another try.
+                  Try adding a bit more detail — dates, place names, or what happens each day — and give it another try.
                 </div>
                 {technicalErrors.length > 0 && (
                   <details style={{ marginTop: 8 }}>
@@ -379,7 +379,7 @@ export default function ImportItinerary(props) {
                 color: raw.trim() && !loading ? IC.sendInk : IC.faint,
                 fontFamily: IFONT, fontSize: 14, fontWeight: 700, cursor: raw.trim() && !loading ? "pointer" : "default",
               }}>
-                {loading ? "Organizing\u2026" : "Organize it"}
+                {loading ? "Organizing…" : "Organize it"}
               </button>
               <button onClick={loadExample} disabled={loading} style={{ border: "1px solid " + IC.pillLine, borderRadius: 999, padding: "12px 18px", background: "transparent", color: IC.ink, fontFamily: IFONT, fontSize: 13.5, fontWeight: 600, cursor: loading ? "default" : "pointer", opacity: loading ? 0.5 : 1 }}>
                 Try an example
@@ -416,7 +416,7 @@ export default function ImportItinerary(props) {
                 <span>{tipCount} tip{tipCount === 1 ? "" : "s"}</span>
               </div>
               <div style={{ fontSize: 11.5, color: IC.muted, marginTop: 10, fontStyle: "italic" }}>
-                Double check the dates look right \u2014 you can adjust anything anytime in the Plan tab.
+                Double check the dates look right — you can adjust anything anytime in the Plan tab.
               </div>
             </div>
 
@@ -439,7 +439,7 @@ export default function ImportItinerary(props) {
             {mode === "update" && existingHasData && (
               <div style={{ marginTop: 20 }}>
                 <div style={{ fontSize: 12.5, color: IC.muted, marginBottom: 12, lineHeight: 1.5 }}>
-                  This trip already has details saved. Tips are always added, never removed \u2014 but choose how to handle the brief, checklist, and calendar:
+                  This trip already has details saved. Tips are always added, never removed — but choose how to handle the brief, checklist, and calendar:
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <button onClick={() => doUpdate("append")} style={{ border: "1px solid " + IC.pillLine, borderRadius: 14, padding: "13px 16px", background: "transparent", textAlign: "left", cursor: "pointer", fontFamily: IFONT }}>
