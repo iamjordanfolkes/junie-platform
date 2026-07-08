@@ -553,9 +553,6 @@ function InviteModal({ event, onClose }) {
         <div style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <div style={{ fontFamily: T.wm, fontWeight: 700, fontSize: 22, letterSpacing: "0.08em", color: C.accent }}>{code}</div>
           <button onClick={copy} style={{ border: `1px solid ${C.pillLine}`, borderRadius: 10, padding: "8px 14px", background: "transparent", color: copied ? C.accent : C.ink, fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{copied ? "Copied ✓" : "Copy"}</button>
-        <button onClick={onImportClick} style={{ width: "100%", marginTop: 8, padding: "11px 0", borderRadius: 14, border: `1px solid ${C.pillLine}`, background: "transparent", color: C.ink, fontFamily: T.font, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
-          Import itinerary
-        </button>
         </div>
         <div style={{ fontSize: 12, color: C.faint, textAlign: "center" }}>Collaborators can view, edit, and plan alongside you.</div>
       </div>
@@ -1001,6 +998,9 @@ function PlanTab({ event, onUpdate, onShowInvite, onImportClick }) {
         <button onClick={onShowInvite} style={{ width: "100%", marginTop: 16, padding: "12px 0", borderRadius: 14, border: `1px solid ${C.pillLine}`, background: "transparent", color: C.ink, fontFamily: T.font, fontSize: 13.5, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
           Invite collaborators
+        </button>
+        <button onClick={onImportClick} style={{ width: "100%", marginTop: 8, padding: "11px 0", borderRadius: 14, border: `1px solid ${C.pillLine}`, background: "transparent", color: C.ink, fontFamily: T.font, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
+          Import itinerary
         </button>
 
         {event.mainDate && <CalendarModule event={event} dayPlans={dayPlans} onDayPlanChange={onDayPlanChange} onAskJunie={onAskJunie} />}
