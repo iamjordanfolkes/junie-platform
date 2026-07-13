@@ -187,13 +187,13 @@ async function getReply(history, event) {
   try {
     const txt = await callAPI({
       model: "claude-sonnet-4-6",
-      max_tokens: 1000,
+      max_tokens: 4096,
       tools: [{ type: "web_search_20250305", name: "web_search" }],
       messages: apiMessages,
     });
     if (txt) return txt;
   } catch {}
-  return "I'd need web search live to give you the best answer. Try me on the deployed version!";
+  return "That was a big ask — try breaking it into a few days at a time, or ask again and I'll take another pass.";
 }
 
 // ─── SHARED SMALL COMPONENTS ──────────────────────────────────────────────────
