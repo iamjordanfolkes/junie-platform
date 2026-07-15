@@ -70,6 +70,25 @@ async function remoteSave(eventId, payload) {
   } catch {}
 }
 
+// Register an event's invite code + meta remotely so collaborators can join
+// immediately, without waiting for the creator to edit shared state first.
+// Sends ONLY identity fields (no brief/todos/checks/etc.), so state.js merges
+// this in without ever overwriting existing shared state.
+async function remoteRegister(event) {
+  if (!IS_DEPLOYED || !event?.id || !event?.inviteCode) return;
+  try {
+    await remoteSave(event.id, {
+      inviteCode: event.inviteCode,
+      name: event.name,
+      hostName: event.hostName,
+      mainDate: event.mainDate,
+      endDate: event.endDate,
+      venue: event.venue,
+      occasionType: event.occasionType,
+    });
+  } catch {}
+}
+
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function genId() { return Math.random().toString(36).slice(2, 9); }
 
@@ -262,14 +281,24 @@ function EventCard({ event, onSelect, onDelete }) {
 function Dashboard({ events, onCreate, onSelect, onDelete, onJoin, onImportClick }) {
   const [joinCode, setJoinCode] = useState("");
   const [joining, setJoining] = useState(false);
+  const [joinErr, setJoinErr] = useState("");
 
   const handleJoin = async () => {
     const code = joinCode.trim();
     if (!code) return;
     setJoining(true);
-    await onJoin(code);
+    setJoinErr("");
+    const result = await onJoin(code);
     setJoining(false);
-    setJoinCode("");
+    if (result === "ok") {
+      setJoinCode("");
+    } else if (result === "notfound") {
+      setJoinErr("No event found for that code. Double-check it with the person who invited you.");
+    } else if (result === "offline") {
+      setJoinErr("Joining only works on the live site, not local preview.");
+    } else {
+      setJoinErr("Something went wrong trying to join. Please try again.");
+    }
   };
 
   return (
@@ -298,6 +327,10 @@ function Dashboard({ events, onCreate, onSelect, onDelete, onJoin, onImportClick
           <input value={joinCode} onChange={e => setJoinCode(e.target.value)} onKeyDown={e => e.key === "Enter" && handleJoin()} placeholder="Join with invite code…" style={{ flex: 1, border: `1px solid ${C.line}`, borderRadius: 999, padding: "12px 16px", fontFamily: T.font, fontSize: 13.5, color: C.ink, background: C.surface, outline: "none" }} />
           <Btn onClick={handleJoin} disabled={!joinCode.trim() || joining} style={{ flexShrink: 0 }}>{joining ? "…" : "Join"}</Btn>
         </div>
+
+        {joinErr && (
+          <div style={{ fontSize: 12.5, color: C.accent, marginTop: -2, marginBottom: 10, lineHeight: 1.4 }}>{joinErr}</div>
+        )}
 
         <button onClick={onImportClick} style={{ width: "100%", border: `1px solid ${C.pillLine}`, borderRadius: 999, padding: "12px 0", background: "transparent", color: C.ink, fontFamily: T.font, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
           Import itinerary
@@ -1227,6 +1260,13 @@ function EventShell({ event, onUpdate, onBack }) {
     }).catch(() => setLoaded(true));
   }, [event.id]);
 
+  // Heal events created before invite codes were registered at creation:
+  // whenever a creator opens their event, ensure its code is in the remote index.
+  useEffect(() => {
+    if (!IS_DEPLOYED) return;
+    if (event.role === "creator") remoteRegister(event);
+  }, [event.id]);
+
   // Save shared state to remote (not messages)
   useEffect(() => {
     if (!loaded) return;
@@ -1344,6 +1384,8 @@ export default function Junie() {
     setEvents(ev => [...ev, eventData]);
     setActiveId(eventData.id);
     setView("event");
+    // Make the event joinable right away, before any shared-state edits.
+    remoteRegister(eventData);
   };
 
   const updateEvent = useCallback((id, updates) => {
@@ -1356,15 +1398,16 @@ export default function Junie() {
   };
 
   const joinEvent = async (code) => {
-    // Check remote for event with this invite code
-    if (!IS_DEPLOYED) return;
+    // Check remote for event with this invite code.
+    // Returns: "ok" | "notfound" | "error" | "offline"
+    if (!IS_DEPLOYED) return "offline";
     try {
-      const res = await fetch(`/api/join?code=${code}`);
-      if (!res.ok) return;
+      const res = await fetch(`/api/join?code=${encodeURIComponent(code.trim())}`);
+      if (!res.ok) return "error";
       const remote = await res.json();
-      if (!remote) return;
+      if (!remote || !remote.id) return "notfound";
       const existing = events.find(e => e.id === remote.id);
-      if (existing) { setActiveId(remote.id); setView("event"); return; }
+      if (existing) { setActiveId(remote.id); setView("event"); return "ok"; }
       const newEvent = {
         ...remote,
         role: "collaborator",
@@ -1378,7 +1421,8 @@ export default function Junie() {
       setEvents(ev => [...ev, newEvent]);
       setActiveId(newEvent.id);
       setView("event");
-    } catch {}
+      return "ok";
+    } catch { return "error"; }
   };
 
   const activeEvent = events.find(e => e.id === activeId);
