@@ -1245,26 +1245,42 @@ function EventShell({ event, onUpdate, onBack }) {
   useEffect(() => {
     if (!IS_DEPLOYED) return;
     remoteLoad(event.id).then(remote => {
-      if (remote) {
-        const merged = {};
-        if (remote.brief?.length) merged.brief = remote.brief;
-        if (remote.todos?.length) merged.todos = remote.todos;
-        if (remote.checks && Object.keys(remote.checks).length) merged.checks = remote.checks;
-        if (remote.savedList?.length) merged.savedList = remote.savedList;
-        if (remote.pins?.length) merged.pins = remote.pins;
-        if (remote.chips?.length) merged.chips = remote.chips;
-        if (remote.dayPlans && Object.keys(remote.dayPlans).length) merged.dayPlans = remote.dayPlans;
-        if (Object.keys(merged).length) onUpdate(merged);
+      remote = remote || {};
+      const merged = {};
+      if (remote.brief?.length) merged.brief = remote.brief;
+      if (remote.todos?.length) merged.todos = remote.todos;
+      if (remote.checks && Object.keys(remote.checks).length) merged.checks = remote.checks;
+      if (remote.savedList?.length) merged.savedList = remote.savedList;
+      if (remote.pins?.length) merged.pins = remote.pins;
+      if (remote.chips?.length) merged.chips = remote.chips;
+      if (remote.dayPlans && Object.keys(remote.dayPlans).length) merged.dayPlans = remote.dayPlans;
+      if (Object.keys(merged).length) onUpdate(merged);
+
+      // If this is the creator, push the full plan up to remote so collaborators
+      // who join actually receive the itinerary/brief/checklist — not just the
+      // trip shell. Prefer remote where it already has content (never clobber a
+      // collaborator's edits); fall back to the local copy where remote is empty
+      // (this is what finally syncs plans imported in an earlier session).
+      if (event.role === "creator") {
+        remoteSave(event.id, {
+          brief: merged.brief || brief,
+          todos: merged.todos || todos,
+          checks: merged.checks || checks,
+          savedList: merged.savedList || savedList,
+          pins: merged.pins || pins,
+          chips: merged.chips || chips,
+          dayPlans: merged.dayPlans || dayPlans,
+          inviteCode: event.inviteCode,
+          name: event.name,
+          hostName: event.hostName,
+          mainDate: event.mainDate,
+          endDate: event.endDate,
+          venue: event.venue,
+          occasionType: event.occasionType,
+        });
       }
       setLoaded(true);
     }).catch(() => setLoaded(true));
-  }, [event.id]);
-
-  // Heal events created before invite codes were registered at creation:
-  // whenever a creator opens their event, ensure its code is in the remote index.
-  useEffect(() => {
-    if (!IS_DEPLOYED) return;
-    if (event.role === "creator") remoteRegister(event);
   }, [event.id]);
 
   // Save shared state to remote (not messages)
