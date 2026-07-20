@@ -40,6 +40,83 @@ const T = {
   r: { bubble: 21, card: 20, chip: 999, input: 24 },
 };
 
+// ─── APPEARANCE / PER-USER THEMING ─────────────────────────────────────────────
+// C is mutated in place (not replaced) so every component — which reads C.xxx
+// directly at render time — repaints on the next render without any prop
+// drilling or context refactor. A tiny pub/sub below forces that next render.
+// This is a personal, per-device preference (like phone display settings): it
+// lives in this browser's localStorage only and is never pushed to collaborators.
+const ORIGINAL_THEME = { ...C };
+
+function hexToRgb(hex) {
+  const clean = (hex || "").replace("#", "");
+  const full = clean.length === 3 ? clean.split("").map(c => c + c).join("") : clean;
+  const m = full.match(/.{1,2}/g);
+  return m && m.length === 3 ? m.map(x => parseInt(x, 16)) : [176, 127, 34];
+}
+function withAlpha(hex, a) {
+  const [r, g, b] = hexToRgb(hex);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function contrastInk(hex) {
+  const [r, g, b] = hexToRgb(hex);
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum > 0.6 ? "#241B07" : "#FDF9F0";
+}
+function accentOverrides(accentHex) {
+  return {
+    accent: accentHex, accentSoft: withAlpha(accentHex, 0.12),
+    userBg: accentHex, userInk: contrastInk(accentHex),
+    avatarBg: accentHex, avatarInk: contrastInk(accentHex),
+    sendBg: accentHex, sendInk: contrastInk(accentHex),
+  };
+}
+function neutralSet(ink, bg, bgSubtle, surface, faint, muted) {
+  return {
+    bg, bgSubtle, surface, ink, muted, faint,
+    line: withAlpha(ink, 0.10),
+    junieBg: surface, junieInk: ink, junieLine: withAlpha(ink, 0.07),
+    sendIdleBg: withAlpha(ink, 0.06), sendIdleInk: faint,
+    pillLine: withAlpha(ink, 0.14),
+    danger: "#C0392B", dangerSoft: "rgba(192,57,43,0.08)",
+  };
+}
+
+const THEME_PRESETS = {
+  original: { label: "Sunlit Gold", accent: "#B07F22", values: ORIGINAL_THEME },
+  midnight: { label: "Midnight", accent: "#E0B24A", values: { ...neutralSet("#F3EDE0", "#15130F", "#1D1A14", "#211E18", "#6E6455", "#A79A85"), ...accentOverrides("#E0B24A") } },
+  sage: { label: "Sage", accent: "#3F5A34", values: { ...neutralSet("#1C231C", "#F3F3EC", "#EAEADC", "#FFFFFF", "#B3BDA9", "#7C8A76"), ...accentOverrides("#3F5A34") } },
+  rose: { label: "Rose", accent: "#A9445A", values: { ...neutralSet("#2B1B1A", "#FBF1EE", "#F4E4DE", "#FFFFFF", "#CBB0AA", "#9C7E79"), ...accentOverrides("#A9445A") } },
+  ocean: { label: "Ocean", accent: "#1F6E7A", values: { ...neutralSet("#151F22", "#EFF3F4", "#E1E9EB", "#FFFFFF", "#A9BEC2", "#6E848A"), ...accentOverrides("#1F6E7A") } },
+};
+const CUSTOM_ACCENT_SWATCHES = ["#B07F22", "#3F5A34", "#A9445A", "#1F6E7A", "#6B4FA0", "#C0392B", "#2E5E4E", "#1F1B16"];
+
+const THEME_STORAGE_KEY = "junie-theme-v1";
+function loadThemeChoice() { try { return JSON.parse(localStorage.getItem(THEME_STORAGE_KEY)) || null; } catch { return null; } }
+function saveThemeChoice(choice) { try { localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(choice)); } catch {} }
+
+function computeThemeValues(choice) {
+  const preset = THEME_PRESETS[choice?.preset] || THEME_PRESETS.original;
+  return choice?.customAccent ? { ...preset.values, ...accentOverrides(choice.customAccent) } : preset.values;
+}
+
+let _themeListeners = [];
+function onThemeChange(fn) { _themeListeners.push(fn); return () => { _themeListeners = _themeListeners.filter(f => f !== fn); }; }
+function notifyThemeChange() { _themeListeners.forEach(fn => fn()); }
+
+function setTheme(choice) {
+  saveThemeChoice(choice);
+  Object.assign(C, computeThemeValues(choice));
+  notifyThemeChange();
+}
+function getThemeChoice() { return loadThemeChoice() || { preset: "original", customAccent: null }; }
+
+// Apply this browser's saved theme immediately on load, before first paint.
+{
+  const saved = loadThemeChoice();
+  if (saved) Object.assign(C, computeThemeValues(saved));
+}
+
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
 const LS_KEY = "junie-platform-v1";
 function lsLoad() { try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch { return {}; } }
@@ -303,6 +380,7 @@ function Dashboard({ events, onCreate, onSelect, onDelete, onJoin, onImportClick
   const [joinCode, setJoinCode] = useState("");
   const [joining, setJoining] = useState(false);
   const [joinErr, setJoinErr] = useState("");
+  const [showTheme, setShowTheme] = useState(false);
 
   const handleJoin = async () => {
     const code = joinCode.trim();
@@ -325,7 +403,12 @@ function Dashboard({ events, onCreate, onSelect, onDelete, onJoin, onImportClick
   return (
     <div className="j-scroll" style={{ height: "100%", overflowY: "auto", background: C.bg }}>
       <div style={{ padding: "52px 20px 32px" }}>
-        <div style={{ fontFamily: T.wm, fontWeight: 800, fontSize: 34, letterSpacing: "-0.02em", color: C.ink, lineHeight: 1 }}>Junie</div>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+          <div style={{ fontFamily: T.wm, fontWeight: 800, fontSize: 34, letterSpacing: "-0.02em", color: C.ink, lineHeight: 1 }}>Junie</div>
+          <button onClick={() => setShowTheme(true)} aria-label="Appearance settings" style={{ width: 36, height: 36, borderRadius: "50%", border: `1px solid ${C.line}`, background: C.surface, color: C.muted, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          </button>
+        </div>
         <div style={{ fontSize: 13, color: C.muted, marginTop: 6, marginBottom: 28 }}>Plan anything worth looking forward to.</div>
 
         {events.length > 0 && (
@@ -357,6 +440,7 @@ function Dashboard({ events, onCreate, onSelect, onDelete, onJoin, onImportClick
           Import itinerary
         </button>
       </div>
+      {showTheme && <ThemeModal onClose={() => setShowTheme(false)} />}
     </div>
   );
 }
@@ -633,6 +717,61 @@ function EditDatesModal({ event, onUpdate, onClose }) {
 
         <button onClick={save} style={{ width: "100%", marginTop: 6, padding: "13px 0", borderRadius: 14, border: "none", background: C.ink, color: C.bg, fontFamily: T.font, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Save dates</button>
         <div style={{ fontSize: 12, color: C.faint, textAlign: "center", marginTop: 12 }}>Collaborators will see the new dates next time they open this event.</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── THEME / APPEARANCE MODAL ───────────────────────────────────────────────
+function ThemeModal({ onClose }) {
+  const [choice, setChoice] = useState(getThemeChoice());
+
+  const pickPreset = (key) => {
+    const next = { preset: key, customAccent: null };
+    setChoice(next); setTheme(next);
+  };
+  const pickCustomAccent = (hex) => {
+    const next = { preset: choice.preset || "original", customAccent: hex };
+    setChoice(next); setTheme(next);
+  };
+  const reset = () => {
+    const next = { preset: "original", customAccent: null };
+    setChoice(next); setTheme(next);
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(31,27,22,0.5)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 393, background: C.bg, borderRadius: "20px 20px 0 0", padding: "24px 20px 40px", maxHeight: "85vh", overflowY: "auto" }}>
+        <div style={{ width: 36, height: 4, borderRadius: 999, background: C.line, margin: "0 auto 20px" }} />
+        <div style={{ fontFamily: T.wm, fontWeight: 800, fontSize: 22, color: C.ink, marginBottom: 6 }}>Appearance</div>
+        <div style={{ fontSize: 13.5, color: C.muted, marginBottom: 20, lineHeight: 1.5 }}>This is just for your view — everyone planning with you can pick their own.</div>
+
+        <div style={{ fontSize: 12, fontWeight: 600, color: C.muted, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.04em" }}>Themes</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, marginBottom: 22 }}>
+          {Object.entries(THEME_PRESETS).map(([key, preset]) => {
+            const active = choice.preset === key && !choice.customAccent;
+            return (
+              <button key={key} onClick={() => pickPreset(key)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>
+                <div style={{ width: 40, height: 40, borderRadius: "50%", background: preset.accent, border: active ? `2.5px solid ${C.ink}` : `1px solid ${C.pillLine}`, boxShadow: active ? `0 0 0 3px ${C.bg}, 0 0 0 4px ${C.ink}` : "none" }} />
+                <div style={{ fontSize: 10.5, fontWeight: 600, color: active ? C.ink : C.muted, textAlign: "center" }}>{preset.label}</div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ fontSize: 12, fontWeight: 600, color: C.muted, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.04em" }}>Custom accent color</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+          {CUSTOM_ACCENT_SWATCHES.map(hex => (
+            <button key={hex} onClick={() => pickCustomAccent(hex)} style={{ width: 32, height: 32, borderRadius: "50%", background: hex, border: choice.customAccent === hex ? `2.5px solid ${C.ink}` : `1px solid ${C.pillLine}`, cursor: "pointer", padding: 0 }} />
+          ))}
+          <label style={{ width: 32, height: 32, borderRadius: "50%", border: `1px dashed ${C.pillLine}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", position: "relative", overflow: "hidden", fontSize: 15, color: C.muted }}>
+            +
+            <input type="color" value={choice.customAccent || THEME_PRESETS[choice.preset || "original"].accent} onChange={e => pickCustomAccent(e.target.value)} style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer" }} />
+          </label>
+        </div>
+        <div style={{ fontSize: 12, color: C.faint, marginBottom: 22, lineHeight: 1.5 }}>Pick any color, or tap the + to choose one exactly.</div>
+
+        <button onClick={reset} style={{ width: "100%", padding: "12px 0", borderRadius: 14, border: `1px solid ${C.pillLine}`, background: "transparent", color: C.ink, fontFamily: T.font, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>Reset to default</button>
       </div>
     </div>
   );
@@ -1308,6 +1447,7 @@ function EventShell({ event, onUpdate, onBack }) {
   const [showInvite, setShowInvite] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showEditDates, setShowEditDates] = useState(false);
+  const [showTheme, setShowTheme] = useState(false);
   const [loaded, setLoaded] = useState(!IS_DEPLOYED);
   const isFirstRender = useRef(true);
 
@@ -1383,6 +1523,9 @@ function EventShell({ event, onUpdate, onBack }) {
       <button onClick={onBack} style={{ position: "fixed", top: 14, left: 14, zIndex: 50, width: 36, height: 36, borderRadius: "50%", border: `1px solid ${C.line}`, background: C.bg, color: C.muted, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
       </button>
+      <button onClick={() => setShowTheme(true)} aria-label="Appearance settings" style={{ position: "fixed", top: 14, right: 14, zIndex: 50, width: 36, height: 36, borderRadius: "50%", border: `1px solid ${C.line}`, background: C.bg, color: C.muted, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      </button>
 
       <div style={{ flex: 1, minHeight: 0 }}>
         {tab === "chat" && <ChatTab event={event} messages={messages} setMessages={msgs => onUpdate({ messages: msgs })} onSave={onSave} chips={chips} onEditChips={onEditChips} />}
@@ -1392,6 +1535,7 @@ function EventShell({ event, onUpdate, onBack }) {
       <TabBar active={tab} onChange={setTab} savedCount={savedList.length + pins.length} />
       {showInvite && <InviteModal event={event} onClose={() => setShowInvite(false)} />}
       {showEditDates && <EditDatesModal event={event} onUpdate={onUpdate} onClose={() => setShowEditDates(false)} />}
+      {showTheme && <ThemeModal onClose={() => setShowTheme(false)} />}
       {showImport && (
         <ImportItinerary
           mode="update"
@@ -1465,6 +1609,10 @@ export default function Junie() {
   const [activeId, setActiveId] = useState(null);
   const [view, setView] = useState("dashboard");
   const [showImportNew, setShowImportNew] = useState(false); // dashboard | onboarding | event
+  const [, setThemeTick] = useState(0);
+
+  // Repaint the whole app whenever this browser's appearance choice changes.
+  useEffect(() => onThemeChange(() => setThemeTick(t => t + 1)), []);
 
   // Persist events to localStorage
   useEffect(() => { lsSave({ events }); }, [events]);
