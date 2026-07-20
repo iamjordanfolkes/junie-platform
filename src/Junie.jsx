@@ -98,6 +98,27 @@ function daysUntil(dateStr) {
   return Math.max(0, Math.ceil((target - new Date()) / 86400000));
 }
 
+// When a trip's dates move (e.g. flights changed), day-by-day content is keyed
+// by literal date strings (e.g. "2026-08-21"). Shifting the dates would orphan
+// that content unless we remap each entry to the same *offset* from the new
+// start date. This preserves "Day 1 activities" as Day 1, even on new dates.
+function shiftDayPlans(dayPlans, oldMainDate, newMainDate) {
+  if (!dayPlans || !Object.keys(dayPlans).length || !oldMainDate || !newMainDate || oldMainDate === newMainDate) {
+    return dayPlans || {};
+  }
+  const oldStart = new Date(oldMainDate + "T12:00:00");
+  const newStart = new Date(newMainDate + "T12:00:00");
+  const shifted = {};
+  for (const [dateStr, plan] of Object.entries(dayPlans)) {
+    const d = new Date(dateStr + "T12:00:00");
+    const offsetDays = Math.round((d - oldStart) / 86400000);
+    const newD = new Date(newStart);
+    newD.setDate(newStart.getDate() + offsetDays);
+    shifted[newD.toISOString().slice(0, 10)] = plan;
+  }
+  return shifted;
+}
+
 function buildWeekDays(mainDate, endDate) {
   if (!mainDate) return [];
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -572,6 +593,51 @@ function Onboarding({ onComplete, onCancel }) {
 }
 
 // ─── INVITE MODAL ─────────────────────────────────────────────────────────────
+// ─── EDIT DATES MODAL ───────────────────────────────────────────────────────
+function EditDatesModal({ event, onUpdate, onClose }) {
+  const isTrip = event.occasionType === "trip" || event.occasionType === "getaway";
+  const [mainDate, setMainDate] = useState(event.mainDate || "");
+  const [endDate, setEndDate] = useState(event.endDate || "");
+  const [err, setErr] = useState("");
+
+  const save = () => {
+    if (!mainDate) { setErr("Pick a start date."); return; }
+    if (isTrip && endDate && endDate < mainDate) { setErr("End date can't be before the start date."); return; }
+    const shiftedDayPlans = shiftDayPlans(event.dayPlans, event.mainDate, mainDate);
+    onUpdate({ mainDate, endDate: isTrip ? endDate : "", dayPlans: shiftedDayPlans });
+    onClose();
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(31,27,22,0.5)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 393, background: C.bg, borderRadius: "20px 20px 0 0", padding: "24px 20px 40px" }}>
+        <div style={{ width: 36, height: 4, borderRadius: 999, background: C.line, margin: "0 auto 20px" }} />
+        <div style={{ fontFamily: T.wm, fontWeight: 800, fontSize: 22, color: C.ink, marginBottom: 6 }}>Edit dates</div>
+        <div style={{ fontSize: 13.5, color: C.muted, marginBottom: 20, lineHeight: 1.5 }}>
+          {isTrip ? "Flights changed? Update the trip dates — your day-by-day plans move with them." : "Update the date for this event."}
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: C.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.04em" }}>{isTrip ? "Start date" : "Date"}</div>
+          <input type="date" value={mainDate} onChange={e => { setMainDate(e.target.value); setErr(""); }} style={{ width: "100%", border: `1px solid ${C.line}`, borderRadius: 12, padding: "11px 14px", fontFamily: T.font, fontSize: 14, color: C.ink, background: C.surface, outline: "none" }} />
+        </div>
+
+        {isTrip && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.04em" }}>End date</div>
+            <input type="date" value={endDate} onChange={e => { setEndDate(e.target.value); setErr(""); }} style={{ width: "100%", border: `1px solid ${C.line}`, borderRadius: 12, padding: "11px 14px", fontFamily: T.font, fontSize: 14, color: C.ink, background: C.surface, outline: "none" }} />
+          </div>
+        )}
+
+        {err && <div style={{ fontSize: 12.5, color: C.accent, marginBottom: 10 }}>{err}</div>}
+
+        <button onClick={save} style={{ width: "100%", marginTop: 6, padding: "13px 0", borderRadius: 14, border: "none", background: C.ink, color: C.bg, fontFamily: T.font, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Save dates</button>
+        <div style={{ fontSize: 12, color: C.faint, textAlign: "center", marginTop: 12 }}>Collaborators will see the new dates next time they open this event.</div>
+      </div>
+    </div>
+  );
+}
+
 function InviteModal({ event, onClose }) {
   const [copied, setCopied] = useState(false);
   const code = event.inviteCode || "N/A";
@@ -993,7 +1059,7 @@ function CalendarModule({ event, dayPlans, onDayPlanChange, onAskJunie }) {
   );
 }
 
-function PlanTab({ event, onUpdate, onShowInvite, onImportClick }) {
+function PlanTab({ event, onUpdate, onShowInvite, onImportClick, onEditDates }) {
   const { brief = [], todos = [], checks = {}, dayPlans = {} } = event;
   const days = daysUntil(event.mainDate);
   const done = todos.filter(x => checks[x.id]).length;
@@ -1013,7 +1079,12 @@ function PlanTab({ event, onUpdate, onShowInvite, onImportClick }) {
       <div style={{ padding: "52px 20px 18px" }}>
         <SectionLabel>The Plan</SectionLabel>
         <div style={{ fontFamily: T.wm, fontWeight: 800, fontSize: 26, letterSpacing: "-0.02em", color: C.ink, lineHeight: 1.08, marginTop: 8 }}>{event.name || "Your event"}</div>
-        {event.mainDate && <div style={{ fontSize: 13, color: C.muted, marginTop: 6 }}>{event.mainDate}</div>}
+        {event.mainDate && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
+            <div style={{ fontSize: 13, color: C.muted }}>{event.mainDate}</div>
+            <button onClick={onEditDates} style={{ border: "none", background: "transparent", color: C.accent, fontFamily: T.font, fontSize: 12.5, fontWeight: 600, cursor: "pointer", padding: 0 }}>Edit dates</button>
+          </div>
+        )}
 
         {days !== null && (
           <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 18, background: C.surface, border: `1px solid ${C.line}`, borderRadius: T.r.card, padding: "16px 18px" }}>
@@ -1236,6 +1307,7 @@ function EventShell({ event, onUpdate, onBack }) {
   const [tab, setTab] = useState("chat");
   const [showInvite, setShowInvite] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showEditDates, setShowEditDates] = useState(false);
   const [loaded, setLoaded] = useState(!IS_DEPLOYED);
   const isFirstRender = useRef(true);
 
@@ -1297,7 +1369,7 @@ function EventShell({ event, onUpdate, onBack }) {
       venue: event.venue,
       occasionType: event.occasionType,
     });
-  }, [brief, todos, checks, savedList, pins, chips, dayPlans]);
+  }, [brief, todos, checks, savedList, pins, chips, dayPlans, event.mainDate, event.endDate, event.venue, event.name]);
 
   const onSave = useCallback((card) => onUpdate({ savedList: savedList.some(x => x.id === card.id) ? savedList : [{ ...card, ts: Date.now() }, ...savedList] }), [savedList, onUpdate]);
   const onRemoveCard = useCallback((id) => onUpdate({ savedList: savedList.filter(x => x.id !== id) }), [savedList, onUpdate]);
@@ -1314,11 +1386,12 @@ function EventShell({ event, onUpdate, onBack }) {
 
       <div style={{ flex: 1, minHeight: 0 }}>
         {tab === "chat" && <ChatTab event={event} messages={messages} setMessages={msgs => onUpdate({ messages: msgs })} onSave={onSave} chips={chips} onEditChips={onEditChips} />}
-        {tab === "plan" && <PlanTab event={event} onUpdate={onUpdate} onShowInvite={() => setShowInvite(true)} onImportClick={() => setShowImport(true)} />}
+        {tab === "plan" && <PlanTab event={event} onUpdate={onUpdate} onShowInvite={() => setShowInvite(true)} onImportClick={() => setShowImport(true)} onEditDates={() => setShowEditDates(true)} />}
         {tab === "saved" && <SavedTab savedList={savedList} pins={pins} onAddPin={onAddPin} onRemovePin={onRemovePin} onRemoveCard={onRemoveCard} />}
       </div>
       <TabBar active={tab} onChange={setTab} savedCount={savedList.length + pins.length} />
       {showInvite && <InviteModal event={event} onClose={() => setShowInvite(false)} />}
+      {showEditDates && <EditDatesModal event={event} onUpdate={onUpdate} onClose={() => setShowEditDates(false)} />}
       {showImport && (
         <ImportItinerary
           mode="update"
